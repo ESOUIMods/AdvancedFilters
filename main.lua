@@ -1,8 +1,10 @@
 if AdvancedFilters == nil then AdvancedFilters = {} end
 local AF = AdvancedFilters
+AF.name = "AdvancedFilters"
+AF.currentInventoryType = INVENTORY_BACKPACK
 
 --Get the current maximum itemfiltertye
-AF.maxItemFilterType = ITEMFILTERTYPE_MAX_VALUE -- 25 is the maximum at API 100023 "Summerset"
+AF.maxItemFilterType = ITEMFILTERTYPE_MAX_VALUE -- 25 is the maximum at API 100024 "Wolfhunter"
 --Build new "virtual" itemfiltertype for weapons + armor at blacksmith station.
 --Needs the normal itemfiltertype_armor/weapon value "on-top" in order to get the change of
 --a tab at the crafting station (ChangeFilter function) working.
@@ -25,7 +27,73 @@ ITEMFILTERTYPE_AF_REFINE_WOODWORKING    = AF.maxItemFilterType + ITEMFILTERTYPE_
 --Get the current maximum inventory types and add 1 for the vendor buy inv type
 INVENTORY_TYPE_VENDOR_BUY = 100
 
-AF.subfilterGroups = {
+--The names of the inventories. Needed to build the unique subfilter panel names.
+local inventoryNames = {
+    [INVENTORY_BACKPACK]        = "PlayerInventory",
+    [INVENTORY_BANK]            = "PlayerBank",
+    [INVENTORY_GUILD_BANK]      = "GuildBank",
+    [INVENTORY_CRAFT_BAG]       = "CraftBag",
+    [INVENTORY_TYPE_VENDOR_BUY] = "VendorBuy",
+    [LF_SMITHING_REFINE]        = "SmithingRefine",
+    [LF_SMITHING_DECONSTRUCT]   = "SmithingDeconstruction",
+    [LF_SMITHING_IMPROVEMENT]   = "SmithingImprovement",
+    [LF_JEWELRY_REFINE]         = "JewelryCraftingRefine",
+    [LF_JEWELRY_DECONSTRUCT]    = "JewelryCraftingDeconstruction",
+    [LF_JEWELRY_IMPROVEMENT]    = "JewelryCraftingImprovement",
+    [LF_ENCHANTING_CREATION]    = "EnchantingCreation",
+    [LF_ENCHANTING_EXTRACTION]  = "EnchantingExtraction",
+    [INVENTORY_HOUSE_BANK]      = "HouseBankWithdraw",
+}
+AF.inventoryNames = inventoryNames
+--The names of the trade skills. Needed to build the unique subfilter panel names.
+local tradeSkillNames = {
+    [CRAFTING_TYPE_INVALID]         = "_",
+    [CRAFTING_TYPE_ALCHEMY]         = "_ALCHEMY_",
+    [CRAFTING_TYPE_BLACKSMITHING]   = "_BLACKSMITH_",
+    [CRAFTING_TYPE_CLOTHIER]        = "_CLOTHIER_",
+    [CRAFTING_TYPE_ENCHANTING]      = "_ENCHANTING_",
+    [CRAFTING_TYPE_PROVISIONING]    = "_PROVISIONING_",
+    [CRAFTING_TYPE_WOODWORKING]     = "_WOODWORKING_",
+    [CRAFTING_TYPE_JEWELRYCRAFTING] = "_JEWELRY_",
+}
+AF.tradeSkillNames = tradeSkillNames
+--The names of the filter types. Needed to build the unique subfilter panel names.
+local filterTypeNames = {
+    [ITEMFILTERTYPE_ALL]                    = AF_CONST_ALL,
+    [ITEMFILTERTYPE_WEAPONS]                = "Weapons",
+    [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]    = "WeaponsSmithing",
+    [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING] = "WeaponsWoodworking",
+    [ITEMFILTERTYPE_ARMOR]                  = "Armor",
+    [ITEMFILTERTYPE_AF_REFINE_SMITHING]     = "RefineSmithing",
+    [ITEMFILTERTYPE_AF_REFINE_WOODWORKING]  = "RefineWoodworking",
+    [ITEMFILTERTYPE_AF_REFINE_CLOTHIER]     = "RefineClothier",
+    [ITEMFILTERTYPE_AF_ARMOR_SMITHING]      = "ArmorSmithing",
+    [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]   = "ArmorWoodworking",
+    [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]      = "ArmorClothier",
+    [ITEMFILTERTYPE_AF_RUNES_ENCHANTING]    = "Runes",
+    [ITEMFILTERTYPE_AF_GLYPHS_ENCHANTING]   = "Glyphs",
+    [ITEMFILTERTYPE_JEWELRY]                = "Jewelry",
+    [ITEMFILTERTYPE_JEWELRYCRAFTING]        = "JewelryCrafting",
+    [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING]    = "JewelryCraftingStation",
+    [ITEMFILTERTYPE_AF_JEWELRY_REFINE]      = "JewelryCraftingStationRefine",
+    [ITEMFILTERTYPE_CONSUMABLE]             = "Consumables",
+    [ITEMFILTERTYPE_CRAFTING]               = "Crafting",
+    [ITEMFILTERTYPE_FURNISHING]             = "Furnishings",
+    [ITEMFILTERTYPE_MISCELLANEOUS]          = "Miscellaneous",
+    --[ITEMFILTERTYPE_JUNK]                   = "Junk",
+    [ITEMFILTERTYPE_BLACKSMITHING]          = "Blacksmithing",
+    [ITEMFILTERTYPE_CLOTHING]               = "Clothing",
+    [ITEMFILTERTYPE_WOODWORKING]            = "Woodworking",
+    [ITEMFILTERTYPE_ALCHEMY]                = "Alchemy",
+    [ITEMFILTERTYPE_ENCHANTING]             = "Enchanting",
+    [ITEMFILTERTYPE_PROVISIONING]           = "Provisioning",
+    [ITEMFILTERTYPE_STYLE_MATERIALS]        = "Style",
+    [ITEMFILTERTYPE_TRAIT_ITEMS]            = "Traits",
+}
+AF.filterTypeNames = filterTypeNames
+
+--The possible subfilter groups for each inventory type, trade skill type and filtertype.
+local subfilterGroups = {
     --Player inventory
     [INVENTORY_BACKPACK] = {
         [CRAFTING_TYPE_INVALID] = {
@@ -215,8 +283,7 @@ AF.subfilterGroups = {
         },
     },
 }
-
-AF.currentInventoryType = INVENTORY_BACKPACK
+AF.subfilterGroups = subfilterGroups
 
 local function InitializeHooks()
     --TABLE TRACKER
@@ -751,68 +818,6 @@ local function PresetCraftingStationHookVariables()
 end
 
 local function CreateSubfilterBars()
-    local inventoryNames = {
-        [INVENTORY_BACKPACK]        = "PlayerInventory",
-        [INVENTORY_BANK]            = "PlayerBank",
-        [INVENTORY_GUILD_BANK]      = "GuildBank",
-        [INVENTORY_CRAFT_BAG]       = "CraftBag",
-        [INVENTORY_TYPE_VENDOR_BUY] = "VendorBuy",
-        [LF_SMITHING_REFINE]        = "SmithingRefine",
-        [LF_SMITHING_DECONSTRUCT]   = "SmithingDeconstruction",
-        [LF_SMITHING_IMPROVEMENT]   = "SmithingImprovement",
-        [LF_JEWELRY_REFINE]         = "JewelryCraftingRefine",
-        [LF_JEWELRY_DECONSTRUCT]    = "JewelryCraftingDeconstruction",
-        [LF_JEWELRY_IMPROVEMENT]    = "JewelryCraftingImprovement",
-        [LF_ENCHANTING_CREATION]    = "EnchantingCreation",
-        [LF_ENCHANTING_EXTRACTION]  = "EnchantingExtraction",
-        [INVENTORY_HOUSE_BANK]      = "HouseBankWithdraw",
-    }
-
-    local tradeSkillNames = {
-        [CRAFTING_TYPE_INVALID]         = "_",
-        [CRAFTING_TYPE_ALCHEMY]         = "_ALCHEMY_",
-        [CRAFTING_TYPE_BLACKSMITHING]   = "_BLACKSMITH_",
-        [CRAFTING_TYPE_CLOTHIER]        = "_CLOTHIER_",
-        [CRAFTING_TYPE_ENCHANTING]      = "_ENCHANTING_",
-        [CRAFTING_TYPE_PROVISIONING]    = "_PROVISIONING_",
-        [CRAFTING_TYPE_WOODWORKING]     = "_WOODWORKING_",
-        [CRAFTING_TYPE_JEWELRYCRAFTING] = "_JEWELRY_",
-    }
-
-    local filterTypeNames = {
-        [ITEMFILTERTYPE_ALL]                    = AF_CONST_ALL,
-        [ITEMFILTERTYPE_WEAPONS]                = "Weapons",
-        [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]    = "WeaponsSmithing",
-        [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING] = "WeaponsWoodworking",
-        [ITEMFILTERTYPE_ARMOR]                  = "Armor",
-        [ITEMFILTERTYPE_AF_REFINE_SMITHING]     = "RefineSmithing",
-        [ITEMFILTERTYPE_AF_REFINE_WOODWORKING]  = "RefineWoodworking",
-        [ITEMFILTERTYPE_AF_REFINE_CLOTHIER]     = "RefineClothier",
-        [ITEMFILTERTYPE_AF_ARMOR_SMITHING]      = "ArmorSmithing",
-        [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]   = "ArmorWoodworking",
-        [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]      = "ArmorClothier",
-        [ITEMFILTERTYPE_AF_RUNES_ENCHANTING]    = "Runes",
-        [ITEMFILTERTYPE_AF_GLYPHS_ENCHANTING]   = "Glyphs",
-        [ITEMFILTERTYPE_JEWELRY]                = "Jewelry",
-        [ITEMFILTERTYPE_JEWELRYCRAFTING]        = "JewelryCrafting",
-        [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING]    = "JewelryCraftingStation",
-        [ITEMFILTERTYPE_AF_JEWELRY_REFINE]      = "JewelryCraftingStationRefine",
-        [ITEMFILTERTYPE_CONSUMABLE]             = "Consumables",
-        [ITEMFILTERTYPE_CRAFTING]               = "Crafting",
-        [ITEMFILTERTYPE_FURNISHING]             = "Furnishings",
-        [ITEMFILTERTYPE_MISCELLANEOUS]          = "Miscellaneous",
-        --[ITEMFILTERTYPE_JUNK]                   = "Junk",
-        [ITEMFILTERTYPE_BLACKSMITHING]          = "Blacksmithing",
-        [ITEMFILTERTYPE_CLOTHING]               = "Clothing",
-        [ITEMFILTERTYPE_WOODWORKING]            = "Woodworking",
-        [ITEMFILTERTYPE_ALCHEMY]                = "Alchemy",
-        [ITEMFILTERTYPE_ENCHANTING]             = "Enchanting",
-        [ITEMFILTERTYPE_PROVISIONING]           = "Provisioning",
-        [ITEMFILTERTYPE_STYLE_MATERIALS]        = "Style",
-        [ITEMFILTERTYPE_TRAIT_ITEMS]            = "Traits",
-    }
-    AF.filterTypes2Names = filterTypeNames
-
     local subfilterButtonNames = {
         [ITEMFILTERTYPE_ALL] = {
             AF_CONST_ALL,
@@ -1006,14 +1011,14 @@ local function onCraftingComplete(eventCode)
     AF.util.updateInventoryInfoBarCountLabel(AF.currentInventoryType, true)
 end
 
-function AdvancedFilters_Loaded(eventCode, addonName)
-    if addonName ~= "AdvancedFilters" then return end
-    EVENT_MANAGER:UnregisterForEvent("AdvancedFilters_Loaded", EVENT_ADD_ON_LOADED)
+local function AdvancedFilters_Loaded(eventCode, addonName)
+    if addonName ~= AF.name then return end
+    EVENT_MANAGER:UnregisterForEvent(AF.name .. "_Loaded", EVENT_ADD_ON_LOADED)
 
     --Register a callback function for crafting stations: If you leave them reseet the current inventory type to INVENTORY_BACKPACK
-    EVENT_MANAGER:RegisterForEvent("AdvancedFilters_CraftingStationLeave", EVENT_END_CRAFTING_STATION_INTERACT, onEndCraftingStationInteract)
-    EVENT_MANAGER:RegisterForEvent("AdvancedFilters_CraftingStationCraftFinished", EVENT_CRAFT_COMPLETED, onCraftingComplete)
-    EVENT_MANAGER:RegisterForEvent("AdvancedFilters_CraftingStationCraftFinished", EVENT_CRAFT_FAILED, onCraftingComplete)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_CraftingStationLeave",          EVENT_END_CRAFTING_STATION_INTERACT,    onEndCraftingStationInteract)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_CraftingStationCraftFinished",  EVENT_CRAFT_COMPLETED,                  onCraftingComplete)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_CraftingStationCraftFinished",  EVENT_CRAFT_FAILED,                     onCraftingComplete)
 
     AF.util.LibFilters:InitializeLibFilters()
 

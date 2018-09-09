@@ -1,9 +1,6 @@
 local AF = AdvancedFilters
 local util = AF.util
 
-local filterTypeToGroupName = {}
-filterTypeToGroupName = AF.filterTypes2Names
-
 local function GetFilterCallbackForWeaponType(filterTypes)
     return function(slot, slotIndex)
         if slotIndex ~= nil and type(slot) ~= "table" then
@@ -1178,7 +1175,11 @@ end
 
 function AdvancedFilters_RemoveDuplicateAddonPlugin(filterInformation, groupName)
     if filterInformation == nil then return false end
-    groupName = groupName or filterTypeToGroupName[filterInformation.filterType]
+    local filterTypeToGroupName = AF.filterTypeNames
+    groupName = groupName or filterTypeToGroupName[filterInformation.filterType] or nil
+    if groupName == nil then
+        return
+    end
     local addonInformation = BuildAddonInformation(filterInformation)
     if addonInformation == nil then return false end
 
@@ -1219,29 +1220,34 @@ end
 function AdvancedFilters_RegisterFilter(filterInformation)
     --make sure all necessary information is present
     if filterInformation == nil then
-        d("No filter information provided. Filter not registered.")
+        d("[AdvancedFilters_RegisterFilter]No filter information provided. Filter not registered.")
         return
     end
     if filterInformation.callbackTable == nil and filterInformation.generator == nil then
-        d("No callback information provided. Filter not registered.")
+        d("[AdvancedFilters_RegisterFilter]No callback information provided. Filter not registered.")
         return
     end
     if filterInformation.subfilters == nil then
-        d("No subfilter type information provided. Filter not registered.")
+        d("[AdvancedFilters_RegisterFilter]No subfilter type information provided. Filter not registered.")
         return
     end
     if filterInformation.filterType == nil then
-        d("No base filter type information provided. Filter not registered.")
+        d("[AdvancedFilters_RegisterFilter]No base filter type information provided. Filter not registered.")
         return
     end
     if filterInformation.enStrings == nil and filterInformation.generator == nil then
-        d("No English strings provided. Filter not registered.")
+        d("[AdvancedFilters_RegisterFilter]No English strings provided. Filter not registered.")
         return
     end
 
     --get filter information from the calling addon and insert it into our callback table
     local addonInformation = BuildAddonInformation(filterInformation)
-    local groupName = filterTypeToGroupName[filterInformation.filterType]
+    local filterTypeToGroupName = AF.filterTypeNames
+    local groupName = filterTypeToGroupName[filterInformation.filterType] or nil
+    if groupName == nil then
+        d("[AdvancedFilters_RegisterFilter]Given \"filterType\" " .. tostring(filterInformation.filterType) .. " in the plugin's filterInformation is not known within the addon.\nPlease see file \"main.lua\", table \"filterTypeNames\" for valid filterTypes!\nFilter not registered.")
+        return
+    end
 
     --Check if the same addon information is already in the callback tables for the filterType
     --and remove the old one, before adding the same/newer one again

@@ -2,29 +2,41 @@ local AF = AdvancedFilters
 AF.AF_FilterBar = ZO_Object:Subclass()
 local AF_FilterBar = AF.AF_FilterBar
 
-function AF_FilterBar:New(inventoryName, groupName, subfilterNames)
+function AF_FilterBar:New(inventoryName, tradeSkillname, groupName, subfilterNames, excludeTheseButtons)
     local obj = ZO_Object.New(self)
-    obj:Initialize(inventoryName, groupName, subfilterNames)
+    obj:Initialize(inventoryName, tradeSkillname, groupName, subfilterNames, excludeTheseButtons)
     return obj
 end
 
-function AF_FilterBar:Initialize(inventoryName, groupName, subfilterNames)
+function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfilterNames, excludeTheseButtons)
+--d("[AF]AF_FilterBarInitialize - inventoryName: " .. tostring(inventoryName) .. ", tradeSkillname: " .. tostring(tradeSkillname) .. ", groupName: " ..tostring(groupName) .. ", subfilterNames: " .. tostring(subfilterNames))
     --get upper anchor position for subfilter bar
     local _,_,_,_,_,offsetY = ZO_PlayerInventorySortBy:GetAnchor()
 
     --parent for the subfilter bar control
     local parents = {
-        ["PlayerInventory"] = ZO_PlayerInventory,
-        ["PlayerBank"] = ZO_PlayerBank,
-        ["GuildBank"] = ZO_GuildBank,
-        ["VendorSell"] = ZO_StoreWindow,
-        ["CraftBag"] = ZO_CraftBag,
+        ["PlayerInventory"]                 = ZO_PlayerInventory,
+        ["PlayerBank"]                      = ZO_PlayerBank,
+        ["GuildBank"]                       = ZO_GuildBank,
+        ["VendorBuy"]                       = ZO_StoreWindow,
+        ["CraftBag"]                        = ZO_CraftBag,
+        ["SmithingRefine"]                  = ZO_SmithingTopLevelRefinementPanel,
+        ["SmithingDeconstruction"]          = ZO_SmithingTopLevelDeconstructionPanel,
+        ["SmithingImprovement"]             = ZO_SmithingTopLevelImprovementPanel,
+        ["JewelryCraftingRefine"]           = ZO_SmithingTopLevelRefinementPanel,
+        ["JewelryCraftingDeconstruction"]   = ZO_SmithingTopLevelDeconstructionPanel,
+        ["JewelryCraftingImprovement"]      = ZO_SmithingTopLevelImprovementPanel,
+        ["EnchantingCreation"]              = ZO_EnchantingTopLevelInventory,
+        ["EnchantingExtraction"]            = ZO_EnchantingTopLevelInventory,
+        ["HouseBankWithdraw"]               = ZO_HouseBank,
     }
     local parent = parents[inventoryName]
+    if parent == nil then
+        d("[AdvancedFilters] ERROR: Parent for subfilterbar missing! InventoryName: " .. tostring(inventoryName) .. ", tradeSkillname: " .. tostring(tradeSkillname) .. ", groupName: " ..tostring(groupName) .. ", subfilterNames: " .. tostring(subfilterNames))
+    end
 
     --unique identifier
-    self.name = inventoryName .. groupName
-
+    self.name = inventoryName .. tradeSkillname .. groupName
     self.control = WINDOW_MANAGER:CreateControlFromVirtual("AF_FilterBar" .. self.name, parent, "AF_Base")
     self.control:SetAnchor(TOPLEFT, parent, TOPLEFT, 0, offsetY)
 
@@ -44,13 +56,13 @@ function AF_FilterBar:Initialize(inventoryName, groupName, subfilterNames)
     local function DropdownOnMouseUpHandler(dropdown, mouseButton, upInside)
         local comboBox = dropdown.m_comboBox
 
-        if mouseButton == 1 and upInside then
+        if mouseButton == MOUSE_BUTTON_INDEX_LEFT and upInside then
             if comboBox.m_isDropdownVisible then
                 comboBox:HideDropdownInternal()
             else
                 comboBox:ShowDropdownInternal()
             end
-        elseif mouseButton == 2 and upInside then
+        elseif mouseButton == MOUSE_BUTTON_INDEX_RIGHT and upInside then
             local entries = {
                 [1] = {
                     name = AF.strings.ResetToAll,
@@ -60,7 +72,7 @@ function AF_FilterBar:Initialize(inventoryName, groupName, subfilterNames)
                         local button = self:GetCurrentButton()
                         button.previousDropdownSelection = comboBox.m_sortedItems[1]
 
-                        local filterType = AF.util.LibFilters:GetCurrentFilterTypeForInventory(self.inventoryType) or LF_VENDOR_BUY
+                        local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
                         AF.util.LibFilters:RequestUpdate(filterType)
 
                         PlaySound(SOUNDS.MENU_BAR_CLICK)
@@ -71,10 +83,10 @@ function AF_FilterBar:Initialize(inventoryName, groupName, subfilterNames)
                     callback = function()
                         local button = self:GetCurrentButton()
 
-                        local filterType = AF.util.LibFilters:GetCurrentFilterTypeForInventory(self.inventoryType) or LF_VENDOR_BUY
+                        local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
                         local originalCallback = AF.util.LibFilters:GetFilterCallback("AF_DropdownFilter", filterType)
-                        local filterCallback = function(slot)
-                            return not originalCallback(slot)
+                        local filterCallback = function(slot, slotIndex)
+                            return not originalCallback(slot, slotIndex)
                         end
 
                         AF.util.LibFilters:UnregisterFilter("AF_DropdownFilter", filterType)
@@ -82,6 +94,12 @@ function AF_FilterBar:Initialize(inventoryName, groupName, subfilterNames)
                         AF.util.LibFilters:RequestUpdate(filterType)
 
                         PlaySound(SOUNDS.MENU_BAR_CLICK)
+
+                        --Update the count of filtered/shown items in the inventory FreeSlot label
+                        --Delay this function call as the data needs to be filtered first!
+                        zo_callLater(function()
+                            AF.util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
+                        end, 50)
                     end,
                 },
             }
@@ -149,18 +167,41 @@ function AF_FilterBar:Initialize(inventoryName, groupName, subfilterNames)
     end
 
     for _, subfilterName in ipairs(subfilterNames) do
-        self:AddSubfilter(groupName, subfilterName)
+        --Check if this subfilterName (button) is excluded at the current groupName
+        local doNotAddButtonNow = false
+        if excludeTheseButtons ~= nil then
+            if type(excludeTheseButtons) == "table" then
+                local buttonNamesToExclude = excludeTheseButtons[1]
+                for _, buttonNameToExclude in pairs(buttonNamesToExclude) do
+                    doNotAddButtonNow = (buttonNameToExclude == subfilterName) or false
+                    if doNotAddButtonNow then
+                        break
+                    end
+                end
+            elseif type(excludeTheseButtons) == "string" then
+                doNotAddButtonNow = (excludeTheseButtons == subfilterName) or false
+            end
+        end
+        if not doNotAddButtonNow then
+            self:AddSubfilter(groupName, subfilterName)
+--        else
+--d(">>>Not adding button: " .. tostring(subfilterName) .. ", at inventory: " .. tostring(inventoryName) .. ", groupName: " .. tostring(groupName))
+        end
     end
 end
 
 function AF_FilterBar:AddSubfilter(groupName, subfilterName)
     local iconPath = AF.textures[subfilterName]
+    if iconPath == nil then
+        d("[AdvancedFilters] ERROR: Texture for subfilter " .. tostring(subfilterName) .. " is missing! Please add textures." .. tostring(subfilterName) .. " to file textures.lua.")
+    end
     local icon = {
         up = string.format(iconPath, "up"),
         down = string.format(iconPath, "down"),
         over = string.format(iconPath, "over"),
     }
-
+--d("[AF_FilterBar:AddSubfilter]groupName: " ..tostring(groupName) .. ", subfilterName: " ..tostring(subfilterName))
+    if AF.subfilterCallbacks[groupName] == nil or AF.subfilterCallbacks[groupName][subfilterName] == nil then return nil  end
     local callback = AF.subfilterCallbacks[groupName][subfilterName].filterCallback
 
     local anchorX = -116 + #self.subfilterButtons * -32
