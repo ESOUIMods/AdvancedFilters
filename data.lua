@@ -1,20 +1,32 @@
 local AF = AdvancedFilters
 local util = AF.util
 
+local filterTypeToGroupName = {}
+filterTypeToGroupName = AF.filterTypes2Names
+
 local function GetFilterCallbackForWeaponType(filterTypes)
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
+        if itemLink == nil then return false end
 
         local weaponType = GetItemLinkWeaponType(itemLink)
 
         for i=1, #filterTypes do
-            if(filterTypes[i] == weaponType) then return true end
+            if(filterTypes[i] == weaponType) then
+                return true
+            end
         end
     end
 end
 
 local function GetFilterCallbackForArmorType(filterTypes)
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
 
         local armorType = GetItemLinkArmorType(itemLink)
@@ -25,20 +37,59 @@ local function GetFilterCallbackForArmorType(filterTypes)
     end
 end
 
-local function GetFilterCallbackForGear(filterTypes)
-    return function(slot)
+local function GetFilterCallbackForGear(filterTypes, armorTypes)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
+        local itemLink = util.GetItemLink(slot)
+
+        local goOn = false
+        if armorTypes ~= nil then
+            local armorType = GetItemLinkArmorType(itemLink)
+            for i=1, #armorTypes do
+                if armorTypes[i] == armorType then
+                    goOn = true
+                    break
+                end
+            end
+        else
+            goOn = true
+        end
+        if goOn then
+            local _, _, _, equipType = GetItemLinkInfo(itemLink)
+
+            for i=1, #filterTypes do
+                if filterTypes[i] == equipType then return true end
+            end
+        end
+        return false
+    end
+end
+
+local function GetFilterCallbackForJewelry(filterTypes, itemTraitType)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
 
         local _, _, _, equipType = GetItemLinkInfo(itemLink)
 
         for i=1, #filterTypes do
-            if filterTypes[i] == equipType then return true end
+            if filterTypes[i] == equipType then
+                local checkItemTraitType = GetItemLinkTraitInfo(itemLink)
+                if itemTraitType == checkItemTraitType then return true end
+            end
         end
     end
 end
 
 local function GetFilterCallbackForClothing()
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
 
         local armorType = GetItemLinkArmorType(itemLink)
@@ -55,7 +106,10 @@ local function GetFilterCallbackForClothing()
 end
 
 local function GetFilterCallbackForTrophy()
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
 
         local itemType = GetItemLinkItemType(itemLink)
@@ -69,7 +123,10 @@ local function GetFilterCallbackForTrophy()
 end
 
 local function GetFilterCallbackForFence()
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
 
         local itemType = GetItemLinkItemType(itemLink)
@@ -85,7 +142,10 @@ local function GetFilterCallbackForFence()
 end
 
 local function GetFilterCallbackForProvisioningIngredient(ingredientType)
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local lookup = {
             --meats (health)
             ["28609"] = "Food", --Game
@@ -220,7 +280,10 @@ local function GetFilterCallbackForProvisioningIngredient(ingredientType)
 end
 
 local function GetFilterCallbackForStyleMaterial(categoryConst)
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
 
         if categoryConst == AF.util.LibMotifCategories:GetMotifCategory(itemLink) then
@@ -232,7 +295,10 @@ end
 local function GetFilterCallbackForSpecializedItemtype(sItemTypes)
     if(not sItemTypes) then return function(slot) return true end end
 
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
 
         local _, sItemType = GetItemLinkItemType(itemLink)
@@ -246,11 +312,12 @@ end
 local function GetFilterCallback(filterTypes)
     if(not filterTypes) then return function(slot) return true end end
 
-    return function(slot)
+    return function(slot, slotIndex)
+        if slotIndex ~= nil and type(slot) ~= "table" then
+            slot = util.prepareSlot(slot, slotIndex)
+        end
         local itemLink = util.GetItemLink(slot)
-
         local itemType = GetItemLinkItemType(itemLink)
-
         for i=1, #filterTypes do
             if filterTypes[i] == itemType then return true end
         end
@@ -261,7 +328,7 @@ AF.subfilterCallbacks = {
     All = {
         addonDropdownCallbacks = {},
         dropdownCallbacks = {
-            {name = "All", filterCallback = GetFilterCallback(nil)},
+            {name = AF_CONST_ALL, filterCallback = GetFilterCallback(nil)},
         },
         All = {
             filterCallback = GetFilterCallback(nil),
@@ -286,9 +353,9 @@ AF.subfilterCallbacks = {
         TwoHand = {
             filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_AXE, WEAPONTYPE_TWO_HANDED_HAMMER, WEAPONTYPE_TWO_HANDED_SWORD}),
             dropdownCallbacks = {
-                {name = "2HAxe", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_AXE})},
-                {name = "2HHammer", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_HAMMER})},
-                {name = "2HSword", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_SWORD})},
+                {name = "TwoHandAxe", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_AXE})},
+                {name = "TwoHandHammer", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_HAMMER})},
+                {name = "TwoHandSword", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_SWORD})},
             },
         },
         Bow = {
@@ -306,6 +373,57 @@ AF.subfilterCallbacks = {
         HealStaff = {
             filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_HEALING_STAFF}),
             dropdownCallbacks = {},
+        },
+    },
+    WeaponsSmithing = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        OneHand = {
+            filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_AXE, WEAPONTYPE_HAMMER, WEAPONTYPE_SWORD, WEAPONTYPE_DAGGER}),
+            dropdownCallbacks = {
+                {name = "Axe", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_AXE})},
+                {name = "Hammer", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_HAMMER})},
+                {name = "Sword", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_SWORD})},
+                {name = "Dagger", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_DAGGER})},
+            },
+        },
+        TwoHand = {
+            filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_AXE, WEAPONTYPE_TWO_HANDED_HAMMER, WEAPONTYPE_TWO_HANDED_SWORD}),
+            dropdownCallbacks = {
+                {name = "TwoHandAxe", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_AXE})},
+                {name = "TwoHandHammer", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_HAMMER})},
+                {name = "TwoHandSword", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_TWO_HANDED_SWORD})},
+            },
+        },
+    },
+    WeaponsWoodworking = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        Bow = {
+            filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_BOW}),
+            dropdownCallbacks = {
+                {name = "Bow", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_BOW})},
+            },
+        },
+        DestructionStaff = {
+            filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_FIRE_STAFF, WEAPONTYPE_FROST_STAFF, WEAPONTYPE_LIGHTNING_STAFF}),
+            dropdownCallbacks = {
+                {name = "Fire", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_FIRE_STAFF})},
+                {name = "Frost", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_FROST_STAFF})},
+                {name = "Lightning", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_LIGHTNING_STAFF})},
+            },
+        },
+        HealStaff = {
+            filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_HEALING_STAFF}),
+            dropdownCallbacks = {
+                {name = "HealStaff", filterCallback = GetFilterCallbackForWeaponType({WEAPONTYPE_HEALING_STAFF})},
+            },
         },
     },
     Armor = {
@@ -341,16 +459,111 @@ AF.subfilterCallbacks = {
             filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_OFF_HAND}),
             dropdownCallbacks = {},
         },
-        Jewelry = {
-            filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_RING, EQUIP_TYPE_NECK}),
-            dropdownCallbacks = {
-                {name = "Ring", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_RING})},
-                {name = "Neck", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_NECK})},
-            },
-        },
         Vanity = {
             filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_DISGUISE, EQUIP_TYPE_COSTUME}),
             dropdownCallbacks = {},
+        },
+    },
+    ArmorSmithing = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        Heavy = {
+            filterCallback = GetFilterCallbackForArmorType({ARMORTYPE_HEAVY}),
+            dropdownCallbacks = {
+                {name = "Head", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_HEAD})},
+                {name = "Chest", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_CHEST})},
+                {name = "Shoulders", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_SHOULDERS})},
+                {name = "Hand", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_HAND})},
+                {name = "Waist", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_WAIST})},
+                {name = "Legs", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_LEGS})},
+                {name = "Feet", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_FEET})},
+            },
+        },
+    },
+    ArmorClothier = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        LightArmor = {
+            filterCallback = GetFilterCallbackForArmorType({ARMORTYPE_LIGHT}),
+            dropdownCallbacks = {
+                {name = "LightHead", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_HEAD}, {ARMORTYPE_LIGHT})},
+                {name = "LightChest", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_CHEST}, {ARMORTYPE_LIGHT})},
+                {name = "LightShoulders", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_SHOULDERS}, {ARMORTYPE_LIGHT})},
+                {name = "LightHand", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_HAND}, {ARMORTYPE_LIGHT})},
+                {name = "LightWaist", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_WAIST}, {ARMORTYPE_LIGHT})},
+                {name = "LightLegs", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_LEGS}, {ARMORTYPE_LIGHT})},
+                {name = "LightFeet", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_FEET}, {ARMORTYPE_LIGHT})},
+            },
+        },
+        Medium = {
+            filterCallback = GetFilterCallbackForArmorType({ARMORTYPE_MEDIUM}),
+            dropdownCallbacks = {
+                {name = "MediumHead", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_HEAD}, {ARMORTYPE_MEDIUM})},
+                {name = "MediumChest", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_CHEST}, {ARMORTYPE_MEDIUM})},
+                {name = "MediumShoulders", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_SHOULDERS}, {ARMORTYPE_MEDIUM})},
+                {name = "MediumHand", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_HAND}, {ARMORTYPE_MEDIUM})},
+                {name = "MediumWaist", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_WAIST}, {ARMORTYPE_MEDIUM})},
+                {name = "MediumLegs", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_LEGS}, {ARMORTYPE_MEDIUM})},
+                {name = "MediumFeet", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_FEET}, {ARMORTYPE_MEDIUM})},
+            },
+        },
+    },
+    ArmorWoodworking = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        Shield = {
+            filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_OFF_HAND}),
+            dropdownCallbacks = {
+                {name = "Shield", filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_OFF_HAND})},
+            },
+        },
+    },
+    Jewelry = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        Neck = {
+            filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_NECK}),
+            dropdownCallbacks = {
+                {name = "Arcane", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_ARCANE)},
+                {name = "Bloodthirsty", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_BLOODTHIRSTY)},
+                {name = "Harmony", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_HARMONY)},
+                {name = "Healthy", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_HEALTHY)},
+                {name = "Infused", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_INFUSED)},
+                {name = "Intricate", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_INTRICATE)},
+                {name = "Ornate", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_ORNATE)},
+                {name = "Protective", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_PROTECTIVE)},
+                {name = "Robust", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_ROBUST)},
+                {name = "Swift", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_SWIFT)},
+                {name = "Triune", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_TRIUNE)},
+            },
+        },
+        Ring = {
+            filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_RING}),
+            dropdownCallbacks = {
+                {name = "Arcane", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_ARCANE)},
+                {name = "Bloodthirsty", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_BLOODTHIRSTY)},
+                {name = "Harmony", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_HARMONY)},
+                {name = "Healthy", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_HEALTHY)},
+                {name = "Infused", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_INFUSED)},
+                {name = "Intricate", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_INTRICATE)},
+                {name = "Ornate", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_ORNATE)},
+                {name = "Protective", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_PROTECTIVE)},
+                {name = "Robust", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_ROBUST)},
+                {name = "Swift", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_SWIFT)},
+                {name = "Triune", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_TRIUNE)},
+            },
         },
     },
     Consumables = {
@@ -447,6 +660,20 @@ AF.subfilterCallbacks = {
                 {name = "RareIngredient", filterCallback = GetFilterCallbackForSpecializedItemtype({SPECIALIZED_ITEMTYPE_INGREDIENT_RARE})},
             },
         },
+        JewelryCrafting = {
+            filterCallback = GetFilterCallback({
+                ITEMTYPE_JEWELRYCRAFTING_BOOSTER,
+                ITEMTYPE_JEWELRYCRAFTING_MATERIAL,
+                ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER,
+                ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL,
+            }),
+            dropdownCallbacks = {
+                {name = "Plating", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_BOOSTER})},
+                {name = "RefinedMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_MATERIAL})},
+                {name = "RawPlating", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER})},
+                {name = "RawMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL})},
+            },
+        },
         Style = {
             filterCallback = GetFilterCallback({ITEMTYPE_STYLE_MATERIAL, ITEMTYPE_RAW_MATERIAL}),
             dropdownCallbacks = {
@@ -458,6 +685,7 @@ AF.subfilterCallbacks = {
                 {name = "CrownStyle", filterCallback = GetFilterCallbackForStyleMaterial(LMC_MOTIF_CATEGORY_CROWN)},
             },
         },
+        --[[
         WeaponTrait = {
             filterCallback = GetFilterCallback({ITEMTYPE_WEAPON_TRAIT}),
             dropdownCallbacks = {},
@@ -465,6 +693,24 @@ AF.subfilterCallbacks = {
         ArmorTrait = {
             filterCallback = GetFilterCallback({ITEMTYPE_ARMOR_TRAIT}),
             dropdownCallbacks = {},
+        },
+        JewelryTrait = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_TRAIT, ITEMTYPE_JEWELRY_RAW_TRAIT}),
+            dropdownCallbacks = {
+                {name = "RawMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_RAW_TRAIT})},
+                {name = "RefinedMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_TRAIT})},
+            },
+        },
+        ]]
+        AllTraits = {
+            filterCallback = GetFilterCallback({ITEMTYPE_WEAPON_TRAIT, ITEMTYPE_ARMOR_TRAIT, ITEMTYPE_JEWELRY_TRAIT, ITEMTYPE_JEWELRY_RAW_TRAIT}),
+            dropdownCallbacks = {
+                {name = "WeaponTrait", filterCallback = GetFilterCallback({ITEMTYPE_WEAPON_TRAIT})},
+                {name = "ArmorTrait", filterCallback = GetFilterCallback({ITEMTYPE_ARMOR_TRAIT})},
+                {name = "JewelryTrait", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_TRAIT, ITEMTYPE_JEWELRY_RAW_TRAIT})},
+                {name = "RawMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_RAW_TRAIT})},
+                {name = "RefinedMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_TRAIT})},
+            },
         },
         FurnishingMat = {
             filterCallback = GetFilterCallback({ITEMTYPE_FURNISHING_MATERIAL}),
@@ -727,6 +973,32 @@ AF.subfilterCallbacks = {
             dropdownCallbacks = {},
         },
     },
+    Runes = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+    },
+    Glyphs = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        WeaponGlyph = {
+            filterCallback = GetFilterCallback({ITEMTYPE_GLYPH_WEAPON}),
+            dropdownCallbacks = {},
+        },
+        ArmorGlyph = {
+            filterCallback = GetFilterCallback({ITEMTYPE_GLYPH_ARMOR}),
+            dropdownCallbacks = {},
+        },
+        JewelryGlyph = {
+            filterCallback = GetFilterCallback({ITEMTYPE_GLYPH_JEWELRY}),
+            dropdownCallbacks = {},
+        },
+    },
     Provisioning = {
         addonDropdownCallbacks = {},
         All = {
@@ -799,29 +1071,152 @@ AF.subfilterCallbacks = {
             filterCallback = GetFilterCallback({ITEMTYPE_ARMOR_TRAIT}),
             dropdownCallbacks = {},
         },
+        JewelryTrait = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_TRAIT, ITEMTYPE_JEWELRY_RAW_TRAIT}),
+            dropdownCallbacks = {
+                {name = "RawMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_RAW_TRAIT})},
+                {name = "RefinedMaterial", filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_TRAIT})},
+            },
+        },
+    },
+    JewelryCrafting = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        Plating = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_BOOSTER}),
+            dropdownCallbacks = {},
+        },
+        RefinedMaterial = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_MATERIAL}),
+            dropdownCallbacks = {},
+        },
+        RawPlating = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER}),
+            dropdownCallbacks = {},
+        },
+        RawMaterial = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL}),
+            dropdownCallbacks = {},
+        },
+        FurnishingMat = {
+            filterCallback = GetFilterCallback({ITEMTYPE_FURNISHING_MATERIAL}),
+            dropdownCallbacks = {},
+        },
+    },
+    JewelryCraftingStationRefine = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        RawPlating = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER}),
+            dropdownCallbacks = {},
+        },
+        RawMaterial = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL}),
+            dropdownCallbacks = {},
+        },
+        RawTrait = {
+            filterCallback = GetFilterCallback({ITEMTYPE_JEWELRY_RAW_TRAIT}),
+            dropdownCallbacks = {},
+        },
+    },
+    RefineSmithing = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        RawMaterial = {
+            filterCallback = GetFilterCallback({ITEMTYPE_BLACKSMITHING_RAW_MATERIAL, ITEMTYPE_RAW_MATERIAL}),
+            dropdownCallbacks = {},
+        },
+    },
+    RefineClothier = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        RawMaterial = {
+            filterCallback = GetFilterCallback({ITEMTYPE_CLOTHIER_RAW_MATERIAL, ITEMTYPE_RAW_MATERIAL}),
+            dropdownCallbacks = {},
+        },
+    },
+    RefineWoodworking = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+        RawMaterial = {
+            filterCallback = GetFilterCallback({ITEMTYPE_WOODWORKING_RAW_MATERIAL, ITEMTYPE_RAW_MATERIAL}),
+            dropdownCallbacks = {},
+        },
     },
 }
+--Clones of subfilterCallbacks
+AF.subfilterCallbacks.JewelryCraftingStation = AF.subfilterCallbacks.Jewelry
+
+local function BuildAddonInformation(filterInformation)
+    if filterInformation == nil then return nil end
+    local addonInformation = {
+        submenuName         = filterInformation.submenuName,
+        callbackTable       = filterInformation.callbackTable,
+        subfilters          = filterInformation.subfilters,
+        excludeSubfilters   = filterInformation.excludeSubfilters,
+        generator           = filterInformation.generator,
+        excludeFilterPanels = filterInformation.excludeFilterPanels,
+        onlyGroups          = filterInformation.onlyGroups,
+    }
+    return addonInformation
+end
+
+function AdvancedFilters_RemoveDuplicateAddonPlugin(filterInformation, groupName)
+    if filterInformation == nil then return false end
+    groupName = groupName or filterTypeToGroupName[filterInformation.filterType]
+    local addonInformation = BuildAddonInformation(filterInformation)
+    if addonInformation == nil then return false end
+
+    --Check if the same addon information is already in the callback tables for the filterType
+    --and remove the old one, before adding the same/newer one again
+    local removedDuplicate = false
+    if AF.subfilterCallbacks[groupName].addonDropdownCallbacks ~= nil then
+        local existingAFSubfilterCallbacksInfo = AF.subfilterCallbacks[groupName].addonDropdownCallbacks
+        for index, subfilterCallbacksInfo in pairs(existingAFSubfilterCallbacksInfo) do
+            --FilterInformation got a submenu? Compare the submenu names and remove exisitng before re-adding this
+            if addonInformation.submenuName ~= nil then
+                if subfilterCallbacksInfo.submenuName ~= nil and subfilterCallbacksInfo.submenuName == addonInformation.submenuName then
+                    --Remove this entry from the subfiltercallbacks as the same submenu will be added again
+                    table.remove(existingAFSubfilterCallbacksInfo, index)
+                    removedDuplicate = true
+                end
+            else
+                --No submenu name is given: Compare the callbackTable contents
+                local newPluginCallbackTable = addonInformation.callbackTable
+                local existingSubfilterCallbacksTableAtGroup = subfilterCallbacksInfo.callbackTable
+                if newPluginCallbackTable.name ~= nil and existingSubfilterCallbacksTableAtGroup ~= nil then
+                    --Check each entry of the exisitng addon dropdown plugin callbackTable
+                    for cbTabIndex, cbTabEntry in pairs(existingSubfilterCallbacksTableAtGroup) do
+                        if cbTabEntry ~= nil and cbTabEntry.name ~= nil and cbTabEntry.name == newPluginCallbackTable.name then
+                            --Same name of the callback plugin table was found: Remove the old plugin callbackTable completely
+                            --Remove this entry from the subfiltercallbacks as the same submenu will be added again
+                            table.remove(existingAFSubfilterCallbacksInfo, index)
+                            removedDuplicate = true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return removedDuplicate
+end
 
 function AdvancedFilters_RegisterFilter(filterInformation)
-    local filterTypeToGroupName = {
-        [ITEMFILTERTYPE_ALL] = "All",
-        [ITEMFILTERTYPE_WEAPONS] = "Weapons",
-        [ITEMFILTERTYPE_ARMOR] = "Armor",
-        [ITEMFILTERTYPE_CONSUMABLE] = "Consumables",
-        [ITEMFILTERTYPE_CRAFTING] = "Crafting",
-        [ITEMFILTERTYPE_FURNISHING] = "Furnishings",
-        [ITEMFILTERTYPE_MISCELLANEOUS] = "Miscellaneous",
-        --[ITEMFILTERTYPE_JUNK] = "Junk",
-        [ITEMFILTERTYPE_BLACKSMITHING] = "Blacksmithing",
-        [ITEMFILTERTYPE_CLOTHING] = "Clothing",
-        [ITEMFILTERTYPE_WOODWORKING] = "Woodworking",
-        [ITEMFILTERTYPE_ALCHEMY] = "Alchemy",
-        [ITEMFILTERTYPE_ENCHANTING] = "Enchanting",
-        [ITEMFILTERTYPE_PROVISIONING] = "Provisioning",
-        [ITEMFILTERTYPE_STYLE_MATERIALS] = "Style",
-        [ITEMFILTERTYPE_TRAIT_ITEMS] = "Traits",
-    }
-
     --make sure all necessary information is present
     if filterInformation == nil then
         d("No filter information provided. Filter not registered.")
@@ -845,13 +1240,12 @@ function AdvancedFilters_RegisterFilter(filterInformation)
     end
 
     --get filter information from the calling addon and insert it into our callback table
-    local addonInformation = {
-        submenuName = filterInformation.submenuName,
-        callbackTable = filterInformation.callbackTable,
-        subfilters = filterInformation.subfilters,
-        generator = filterInformation.generator,
-    }
+    local addonInformation = BuildAddonInformation(filterInformation)
     local groupName = filterTypeToGroupName[filterInformation.filterType]
+
+    --Check if the same addon information is already in the callback tables for the filterType
+    --and remove the old one, before adding the same/newer one again
+    AdvancedFilters_RemoveDuplicateAddonPlugin(filterInformation, groupName)
 
     --insert addon information
     table.insert(AF.subfilterCallbacks[groupName].addonDropdownCallbacks, addonInformation)
@@ -860,15 +1254,13 @@ function AdvancedFilters_RegisterFilter(filterInformation)
     if filterInformation.generator then return end
 
     --get string information from the calling addon and insert it into our string table
-    local function addStrings(lang, strings)
+    --and support setmetatable!
+    --> Overwrite exisiting strings with data from the same AF plugin strings, if re-apllied
+    local function addStrings(lang, strings, langStrings)
         for key, string in pairs(strings) do
-            AF.strings[key] = string
+            AF.strings[key] = langStrings and langStrings[key] or string
         end
     end
     local lang = AF.util.GetLanguage()
-    if filterInformation[lang .. "Strings"] ~= nil then
-        addStrings(lang, filterInformation[lang .. "Strings"])
-    else
-        addStrings("en", filterInformation.enStrings)
-    end
+    addStrings(lang, filterInformation.enStrings, filterInformation[lang .. "Strings"])
 end
