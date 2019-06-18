@@ -1,6 +1,8 @@
+if AdvancedFilters == nil then AdvancedFilters = {} end
 local AF = AdvancedFilters
 AF.AF_FilterBar = ZO_Object:Subclass()
 local AF_FilterBar = AF.AF_FilterBar
+local BuildDropdownCallbacks = AF.util.BuildDropdownCallbacks
 
 function AF_FilterBar:New(inventoryName, tradeSkillname, groupName, subfilterNames, excludeTheseButtons)
     local obj = ZO_Object.New(self)
@@ -9,30 +11,21 @@ function AF_FilterBar:New(inventoryName, tradeSkillname, groupName, subfilterNam
 end
 
 function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfilterNames, excludeTheseButtons)
---d("[AF]AF_FilterBarInitialize - inventoryName: " .. tostring(inventoryName) .. ", tradeSkillname: " .. tostring(tradeSkillname) .. ", groupName: " ..tostring(groupName) .. ", subfilterNames: " .. tostring(subfilterNames))
+    --d("=============================================\n[AF]AF_FilterBarInitialize - inventoryName: " .. tostring(inventoryName) .. ", tradeSkillname: " .. tostring(tradeSkillname) .. ", groupName: " ..tostring(groupName) .. ", subfilterNames: " .. tostring(subfilterNames))
     --get upper anchor position for subfilter bar
     local _,_,_,_,_,offsetY = ZO_PlayerInventorySortBy:GetAnchor()
 
     --parent for the subfilter bar control
-    local parents = {
-        ["PlayerInventory"]                 = ZO_PlayerInventory,
-        ["PlayerBank"]                      = ZO_PlayerBank,
-        ["GuildBank"]                       = ZO_GuildBank,
-        ["VendorBuy"]                       = ZO_StoreWindow,
-        ["CraftBag"]                        = ZO_CraftBag,
-        ["SmithingRefine"]                  = ZO_SmithingTopLevelRefinementPanel,
-        ["SmithingDeconstruction"]          = ZO_SmithingTopLevelDeconstructionPanel,
-        ["SmithingImprovement"]             = ZO_SmithingTopLevelImprovementPanel,
-        ["JewelryCraftingRefine"]           = ZO_SmithingTopLevelRefinementPanel,
-        ["JewelryCraftingDeconstruction"]   = ZO_SmithingTopLevelDeconstructionPanel,
-        ["JewelryCraftingImprovement"]      = ZO_SmithingTopLevelImprovementPanel,
-        ["EnchantingCreation"]              = ZO_EnchantingTopLevelInventory,
-        ["EnchantingExtraction"]            = ZO_EnchantingTopLevelInventory,
-        ["HouseBankWithdraw"]               = ZO_HouseBank,
-    }
+    local parents = AF.filterBarParents
     local parent = parents[inventoryName]
     if parent == nil then
         d("[AdvancedFilters] ERROR: Parent for subfilterbar missing! InventoryName: " .. tostring(inventoryName) .. ", tradeSkillname: " .. tostring(tradeSkillname) .. ", groupName: " ..tostring(groupName) .. ", subfilterNames: " .. tostring(subfilterNames))
+--[[
+    else
+        if parent.GetName then
+            d(">parent name: " ..tostring(parent:GetName()))
+        end
+]]
     end
 
     --unique identifier
@@ -132,7 +125,7 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
             end
 
             AddCustomMenuItem(item.name, OnSelect, nil, self.m_font,
-              self.m_normalColor, self.m_highlightColor)
+                    self.m_normalColor, self.m_highlightColor)
         end
 
         local submenuCandidates = self.submenuCandidates
@@ -147,11 +140,11 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
                         button.forceNextDropdownRefresh = true
                         self.m_selectedItemText:SetText(AF.strings[callbackEntry.name])
                         self.m_selectedItemData = self:CreateItemEntry(AF.strings[callbackEntry.name],
-                            function(comboBox, itemName, item, selectionChanged)
-                                AF.util.ApplyFilter(callbackEntry,
-                                  "AF_DropdownFilter",
-                                  selectionChanged or button.forceNextDropdownRefresh)
-                            end)
+                                function(comboBox, itemName, item, selectionChanged)
+                                    AF.util.ApplyFilter(callbackEntry,
+                                            "AF_DropdownFilter",
+                                            selectionChanged or button.forceNextDropdownRefresh)
+                                end)
                         button.previousDropdownSelection = self.m_selectedItemData
 
                         PlaySound(SOUNDS.MENU_BAR_CLICK)
@@ -161,7 +154,6 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
                 }
                 table.insert(entries, entry)
             end
-
             AddCustomSubMenuItem(AF.strings[submenuCandidate.submenuName], entries, "ZoFontGameSmall")
         end
     end
@@ -184,8 +176,8 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
         end
         if not doNotAddButtonNow then
             self:AddSubfilter(groupName, subfilterName)
---        else
---d(">>>Not adding button: " .. tostring(subfilterName) .. ", at inventory: " .. tostring(inventoryName) .. ", groupName: " .. tostring(groupName))
+            --        else
+            --d(">>>Not adding button: " .. tostring(subfilterName) .. ", at inventory: " .. tostring(inventoryName) .. ", groupName: " .. tostring(groupName))
         end
     end
 end
@@ -194,6 +186,7 @@ function AF_FilterBar:AddSubfilter(groupName, subfilterName)
     local iconPath = AF.textures[subfilterName]
     if iconPath == nil then
         d("[AdvancedFilters] ERROR: Texture for subfilter " .. tostring(subfilterName) .. " is missing! Please add textures." .. tostring(subfilterName) .. " to file textures.lua.")
+        return
     end
     local icon = {
         up = string.format(iconPath, "up"),
@@ -259,28 +252,49 @@ end
 function AF_FilterBar:ActivateButton(newButton)
     local function PopulateDropdown()
         local comboBox = self.dropdown.m_comboBox
-        newButton.dropdownCallbacks = AF.util.BuildDropdownCallbacks(newButton.groupName, newButton.name)
+        newButton.dropdownCallbacks = BuildDropdownCallbacks(newButton.groupName, newButton.name)
 
         comboBox.submenuCandidates = {}
         for _, v in ipairs(newButton.dropdownCallbacks) do
             if v.submenuName then
                 table.insert(comboBox.submenuCandidates, v)
             else
-                local itemEntry = ZO_ComboBox:CreateItemEntry(AF.strings[v.name],
-                    function(comboBox, itemName, item, selectionChanged)
-                        AF.util.ApplyFilter(v, "AF_DropdownFilter",
-                          selectionChanged or newButton.forceNextDropdownRefresh)
-                    end)
-                comboBox:AddItem(itemEntry)
+                local dropdownEntryName = v.name
+                if v.addString ~= nil and v.addString ~= "" then
+                    dropdownEntryName = dropdownEntryName .. "_" .. v.addString
+                end
+                local iconForDropdownCallbackEntry = ""
+                if AF.settings.showIconsInFilterDropdowns and v.showIcon ~= nil and v.showIcon == true then
+                    local textureName = AF.textures[v.name] or ""
+                    if textureName ~= "" then
+                        --Remove the placeholder %s
+                        textureName = string.format(textureName, "up")
+                        iconForDropdownCallbackEntry = zo_iconFormat(textureName, 28, 28)
+                    end
+                end
+                local itemEntryName = AF.strings[dropdownEntryName] or ""
+                if itemEntryName == "" then
+                    d("[AdvancedFilters]Translation missing for dropdown filter entry: " .. tostring(dropdownEntryName))
+                else
+                    if AF.settings.showIconsInFilterDropdowns and iconForDropdownCallbackEntry ~= "" then
+                        itemEntryName = iconForDropdownCallbackEntry .. " " .. itemEntryName
+                    end
+                    local itemEntry = ZO_ComboBox:CreateItemEntry(itemEntryName,
+                            function(comboBox, itemName, item, selectionChanged)
+                                AF.util.ApplyFilter(v, "AF_DropdownFilter", selectionChanged or newButton.forceNextDropdownRefresh)
+                            end)
+                    comboBox:AddItem(itemEntry)
+                end
             end
         end
-
         comboBox:SetSelectedItemFont("ZoFontGameSmall")
         comboBox:SetDropdownFont("ZoFontGameSmall")
     end
 
     local name = newButton.name
     self.label:SetText(AF.strings[name])
+    local settings = AF.settings
+    self.label:SetHidden(settings.hideSubFilterLabel)
 
     local oldButton = self.activeButton
 
@@ -321,4 +335,52 @@ end
 
 function AF_FilterBar:SetInventoryType(inventoryType)
     self.inventoryType = inventoryType
+end
+
+
+------------------------------------------------------------------------------------------------------------------------
+--Create the subfilter bars below the inventory's filters (e.g. the weapons filters from the game will get a subfilter bar with 1hd, 2hd, staffs, shields)
+function AF.CreateSubfilterBars()
+    --local variables for a speedUp on access on addon's global table variables
+    local doDebugOutput         = AF.settings.doDebugOutput
+    local inventoryNames        = AF.inventoryNames
+    local tradeSkillNames       = AF.tradeSkillNames
+    local filterTypeNames       = AF.filterTypeNames
+    local subfilterGroups       = AF.subfilterGroups
+    local subfilterButtonNames  = AF.subfilterButtonNames
+    local excludeButtonNamesfromSubFilterBar
+    --Build each subfilterBar for the parent game filter controls
+    for inventoryType, tradeSkillTypeSubFilterGroup in pairs(subfilterGroups) do
+        for tradeSkillType, subfilterGroup in pairs(tradeSkillTypeSubFilterGroup) do
+            for itemFilterType, _ in pairs(subfilterGroup) do
+                if inventoryType and tradeSkillType and itemFilterType then
+                    --Exclusion check
+                    local excludeTheseButtons
+                    if excludeButtonNamesfromSubFilterBar and excludeButtonNamesfromSubFilterBar[inventoryType] and excludeButtonNamesfromSubFilterBar[inventoryType][tradeSkillType] and excludeButtonNamesfromSubFilterBar[inventoryType][tradeSkillType][itemFilterType] then
+                        excludeTheseButtons = excludeButtonNamesfromSubFilterBar[inventoryType][tradeSkillType][itemFilterType]
+                    end
+                    if inventoryNames[inventoryType] and tradeSkillNames[tradeSkillType] and filterTypeNames[itemFilterType] and subfilterButtonNames[itemFilterType] then
+                        --Build the subfilterBar with the buttons now
+                        local subfilterBar = AF.AF_FilterBar:New(
+                                inventoryNames[inventoryType],
+                                tradeSkillNames[tradeSkillType],
+                                filterTypeNames[itemFilterType],
+                                subfilterButtonNames[itemFilterType],
+                                excludeTheseButtons                     --subFilterButtons which should not be shown
+                        )
+                        subfilterBar:SetInventoryType(inventoryType)
+                        subfilterGroups[inventoryType][tradeSkillType][itemFilterType] = subfilterBar
+                    else
+                        if doDebugOutput then
+                            d("[AF]CreateSubfilterBars, missing names - inventoryName: " ..tostring(inventoryNames[inventoryType]) .. ", tradeSkillName: " .. tostring(tradeSkillNames[tradeSkillType]) .. ", filterTypeName:" .. tostring(filterTypeNames[itemFilterType]) .. ", subfilterButtonName:" .. tostring(subfilterButtonNames[itemFilterType]))
+                        end
+                    end
+                else
+                    if doDebugOutput then
+                        d("[AF]CreateSubfilterBars, missing data - inventoryType: " ..tostring(inventoryType) .. ", tradeSkillType: " .. tostring(tradeSkillType) .. ", itemFilterType:" .. tostring(itemFilterType))
+                    end
+                end
+            end
+        end
+    end
 end

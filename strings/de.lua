@@ -2,22 +2,22 @@ local util = AdvancedFilters.util
 local enStrings = AdvancedFilters.strings
 local strings = {
     --SHARED
-    All = "Alle",
+    All = util.Localize(SI_ITEMFILTERTYPE0),
     Trophy = util.Localize(SI_ITEMTYPE5),
 
     --WEAPON
-    OneHand = "Einh\195\164ndig",
-    TwoHand = "Zweih\195\164ndig",
+    OneHand = util.Localize(SI_EQUIPTYPE5),
+    TwoHand = util.Localize(SI_EQUIPTYPE6),
     Bow = util.Localize(SI_WEAPONTYPE8),
-    DestructionStaff = "Zerst\195\182rungsstab",
+    DestructionStaff = util.Localize(SI_GAMEPADWEAPONCATEGORY4),
     HealStaff = util.Localize(SI_WEAPONTYPE9),
 
     Axe = util.Localize(SI_WEAPONTYPE1),
     Sword = util.Localize(SI_WEAPONTYPE3),
     Hammer = util.Localize(SI_WEAPONTYPE2),
-    TwoHandAxe = "2H "..util.Localize(SI_WEAPONTYPE1),
-    TwoHandSword = "2H "..util.Localize(SI_WEAPONTYPE3),
-    TwoHandHammer = "2H "..util.Localize(SI_WEAPONTYPE2),
+    TwoHandAxe = util.Localize(zo_strformat("<<1>> <<2>>", GetString(SI_EQUIPTYPE6), GetString(SI_WEAPONTYPE1))),
+    TwoHandSword = util.Localize(zo_strformat("<<1>> <<2>>", GetString(SI_EQUIPTYPE6), GetString(SI_WEAPONTYPE3))),
+    TwoHandHammer = util.Localize(zo_strformat("<<1>> <<2>>", GetString(SI_EQUIPTYPE6), GetString(SI_WEAPONTYPE2))),
     Dagger = util.Localize(SI_WEAPONTYPE11),
     Fire = util.Localize(SI_WEAPONTYPE12),
     Frost = util.Localize(SI_WEAPONTYPE13),
@@ -27,20 +27,20 @@ local strings = {
     Heavy = util.Localize(SI_ARMORTYPE3),
     Medium = util.Localize(SI_ARMORTYPE2),
     LightArmor = util.Localize(SI_ARMORTYPE1),
-    Clothing = "Bekleidung",
-    Shield = "Schilde",
-    Jewelry = "Schmuck",
-    Vanity = "Verkleidung",
+    Clothing = util.Localize(SI_VISUALARMORTYPE5),
+    Shield = zo_strformat("<<m:1>>", GetString(SI_ITEMSTYLECHAPTER13)),
+    Jewelry = util.Localize(SI_ITEMFILTERTYPE25),
+    Vanity = util.Localize(SI_ITEMTYPE14),
 
-    Head = "Kopf",
-    Chest = "Torso",
-    Shoulders = "Schultern",
-    Hand = "H\195\164nde",
-    Waist = "Taille",
-    Legs = "Beine",
-    Feet = "F\195\188ße",
-    Ring = "Ring",
-    Neck = "Hals",
+    Head = util.Localize(SI_OUTFITSLOT0),
+    Chest = util.Localize(SI_OUTFITSLOT1),
+    Shoulders = util.Localize(SI_OUTFITSLOT2),
+    Hand = util.Localize(SI_OUTFITSLOT3),
+    Waist = util.Localize(SI_OUTFITSLOT4),
+    Legs = util.Localize(SI_OUTFITSLOT5),
+    Feet = util.Localize(SI_OUTFITSLOT6),
+    Ring = util.Localize(SI_EQUIPTYPE12),
+    Neck = util.Localize(SI_EQUIPSLOT1),
 
     --CONSUMABLES
     Crown = util.Localize(SI_ITEMTYPE57),
@@ -52,18 +52,19 @@ local strings = {
     Motif = util.Localize(SI_ITEMTYPE8),
     Writ = util.Localize(SI_ITEMTYPE60),
     Container = util.Localize(SI_ITEMTYPE18),
-    Repair = "Werkzeug",
+    Repair = util.Localize(SI_ITEMTYPE9),
 
     --MATERIALS
-    Blacksmithing = "Schmiedekunst",
-    Clothier = "Schneiderei",
-    Woodworking = "Schreinerei",
-    Alchemy = "Alchemie",
-    Enchanting = "Verzaubern",
-    Provisioning = "Versorgen",
+    Blacksmithing = util.Localize(SI_ITEMFILTERTYPE13),
+    Clothier = util.Localize(SI_ITEMFILTERTYPE14),
+    Woodworking = util.Localize(SI_ITEMFILTERTYPE15),
+    Alchemy = util.Localize(SI_ITEMFILTERTYPE16),
+    Enchanting = util.Localize(SI_ITEMFILTERTYPE17),
+    Provisioning = util.Localize(SI_ITEMFILTERTYPE18),
     Style = util.Localize(SI_ITEMTYPE44),
     WeaponTrait = util.Localize(SI_ITEMTYPE46),
     ArmorTrait = util.Localize(SI_ITEMTYPE45),
+    JewelryTrait = util.Localize(SI_ITEMTYPE66),
     FurnishingMat = util.Localize(SI_ITEMTYPE62),
 
     Reagent = util.Localize(SI_ITEMTYPE31),
@@ -85,10 +86,10 @@ local strings = {
     TargetDummy = util.Localize(SI_SPECIALIZEDITEMTYPE214),
 
     --MISCELLANEOUS
-    Glyphs = "Glyphe",
+    Glyphs = util.Localize(SI_GAMEPADITEMCATEGORY13),
     SoulGem = util.Localize(SI_ITEMTYPE19),
     Siege = util.Localize(SI_ITEMTYPE6),
-    Bait = "K\195\182der",
+    Bait = util.Localize(SI_GAMEPADITEMCATEGORY3),
     Tool = util.Localize(SI_ITEMTYPE9),
     Fence = util.Localize(SI_INVENTORY_STOLEN_ITEM_TOOLTIP),
     Trash = util.Localize(SI_ITEMTYPE48),
@@ -96,6 +97,8 @@ local strings = {
     ArmorGlyph = util.Localize(SI_ITEMTYPE21),
     JewelryGlyph = util.Localize(SI_ITEMTYPE26),
     WeaponGlyph = util.Localize(SI_ITEMTYPE20),
+
+    Runes = util.Localize(SI_WEAPONMODELTYPE11),
 
     --JUNK
     Weapon = util.Localize(SI_ITEMFILTERTYPE1),
@@ -105,7 +108,7 @@ local strings = {
     Miscellaneous = util.Localize(SI_ITEMFILTERTYPE5),
 
     --DROPDOWN CONTEXT MENU
-    ResetToAll = "Alle anzeigen",
+    ResetToAll = util.Localize(SI_GAMEPAD_GUILD_HISTORY_SUBCATEGORY_ALL),
     InvertDropdownFilter = "Filter umdrehen",
 
     --LibMotifCategories
@@ -121,12 +124,34 @@ local strings = {
     RawMaterial = util.Localize(SI_ITEMTYPE17),
     RefinedMaterial = util.Localize(SI_ITEMTYPE36),
     Temper = util.Localize(SI_ITEMTYPE41),
+    RawTemper = util.Localize(SI_ITEMTYPE17),
+
+    --Jewelry Crafting
+    JewelryCrafting = util.Localize(SI_ITEMFILTERTYPE24),
+    Plating = util.Localize(SI_ITEMTYPE65),
+    RawPlating = util.Localize(SI_ITEMTYPE67),
 
     --CLOTHING
-    Resin = util.Localize(SI_ITEMTYPE43),
+    Resin = util.Localize(SI_ITEMTYPE42),
 
     --WOODWORKING
-    Tannin = util.Localize(SI_ITEMTYPE42),
+    Tannin = util.Localize(SI_ITEMTYPE43),
+
+    --Transmutation
+    Retrait = util.Localize(SI_RETRAIT_STATION_ITEM_TO_RETRAIT_HEADER),
+
+    --LAM settings menu
+    lamDescription = "Zeige zusätzliche Filter Kategorien in den Inventaren, um Gegenstandstypen zu unterscheiden",
+    lamHideItemCount = "Verstecke Gegenstand Anzahl",
+    lamHideItemCountTT = "Versteckt die Gegenstand Anzahl, welche als \"(...)\" am unteren Inventar Rand angezeigt wird",
+    lamHideItemCountColor = "Farbe der Gegenstand Anzahl",
+    lamHideItemCountColorTT = "Setze die Farbe der Gegenstand Anzahl",
+    lamHideSubFilterLabel = "Verstecke Filter Kategorie Label",
+    lamHideSubFilterLabelTT = "Versteckt den Filter Kategorie Beschreibungstext Label, welcher sich links am Inventar Rand befindet",
+    lamGrayOutSubFiltersWithNoItems = "Deaktiviere Kategorien ohne Gegenstände",
+    lamGrayOutSubFiltersWithNoItemsTT = "Deaktiviert die Filter Kategorien, welche aktuell keine Gegegnstände besitzen.",
+    lamShowIconsInFilterDropdowns = "Zeige Symbole in Filter Boxen",
+    lamShowIconsInFilterDropdownsTT = "Zeige Symbole in den Filter Aufklapp Boxen an",
 }
 
 setmetatable(strings, {__index = enStrings})

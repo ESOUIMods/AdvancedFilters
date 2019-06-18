@@ -1,0 +1,120 @@
+if AdvancedFilters == nil then AdvancedFilters = {} end
+local AF = AdvancedFilters
+
+function AF.LAMSettingsMenu()
+    --Library LibStub was loaded and library LibAddonMenu exists?
+    --Create the settings panel object of libAddonMenu 2.0
+    if AF.LAM == nil then return end
+
+    --Function loaded as AF LAM panel got cretaed
+    --local function AFLAMPanelCreated()
+    --end
+
+    --Build the LAM addon menu
+    local function BuildAddonMenu()
+        local defSettings = AF.defaultSettings
+        local settings = AF.settings
+        local strings = AF.strings
+
+        local panelData = {
+            type 				= 'panel',
+            name 				= AF.name,
+            displayName 		= AF.name,
+            author 				= AF.author,
+            version 			= AF.version,
+            registerForRefresh 	= true,
+            registerForDefaults = true,
+            slashCommand 		= "/afs",
+            website             = AF.website
+        }
+        --The LibAddonMenu2.0 settings panel reference variable
+        AF.LAMsettingsPanel = AF.LAM:RegisterAddonPanel(AF.name .. "_LAM", panelData)
+
+        --The option controls for the LAM 2.0 panel
+        local optionsTable =
+        {	-- BEGIN OF OPTIONS TABLE
+
+            {
+                type = 'description',
+                text = strings.lamDescription,
+            },
+            --==============================================================================
+            {
+                type = "checkbox",
+                name = strings.lamHideItemCount,
+                tooltip = strings.lamHideItemCountTT,
+                getFunc = function() return settings.hideItemCount end,
+                setFunc = function(value)
+                    AF.settings.hideItemCount = value
+                end,
+                default = defSettings.hideItemCount,
+            },
+            {
+                type = "colorpicker",
+                name = strings.lamHideItemCountColor,
+                tooltip = strings.lamHideItemCountColorTT,
+                getFunc = function() return AF.settings.itemCountLabelColor["r"], AF.settings.itemCountLabelColor["g"], AF.settings.itemCountLabelColor["b"], AF.settings.itemCountLabelColor["a"] end,
+                setFunc = function(r,g,b,a)
+                    AF.settings.itemCountLabelColor["r"] = r
+                    AF.settings.itemCountLabelColor["g"] = g
+                    AF.settings.itemCountLabelColor["b"] = b
+                    AF.settings.itemCountLabelColor["a"] = a
+                end,
+                --default = defSettings.itemCountLabelColor,
+                disabled = function() return settings.hideItemCount end,
+            },
+            --==============================================================================
+            {
+                type = "checkbox",
+                name = strings.lamHideSubFilterLabel,
+                tooltip = strings.lamHideSubFilterLabelTT,
+                getFunc = function() return settings.hideSubFilterLabel end,
+                setFunc = function(value)
+                    AF.settings.hideSubFilterLabel = value
+                end,
+                default = defSettings.hideSubFilterLabel,
+            },
+            --==============================================================================
+            {
+                type = "checkbox",
+                name = strings.lamGrayOutSubFiltersWithNoItems,
+                tooltip = strings.lamGrayOutSubFiltersWithNoItemsTT,
+                getFunc = function() return settings.grayOutSubFiltersWithNoItems end,
+                setFunc = function(value)
+                    AF.settings.grayOutSubFiltersWithNoItems = value
+                end,
+                default = defSettings.grayOutSubFiltersWithNoItems,
+            },
+            --==============================================================================
+            {
+                type = "checkbox",
+                name = strings.lamShowIconsInFilterDropdowns,
+                tooltip = strings.lamShowIconsInFilterDropdownsTT,
+                getFunc = function() return settings.showIconsInFilterDropdowns end,
+                setFunc = function(value)
+                    AF.settings.showIconsInFilterDropdowns = value
+                end,
+                default = defSettings.showIconsInFilterDropdowns,
+            },
+            --==============================================================================
+            --                              DEBUG
+            --==============================================================================
+            {
+                type = "checkbox",
+                name = strings.lamDebugOutput,
+                tooltip = strings.lamDebugOutput,
+                getFunc = function() return settings.doDebugOutput end,
+                setFunc = function(value)
+                    AF.settings.doDebugOutput = value
+                end,
+                default = defSettings.doDebugOutput,
+            },
+
+        } -- END OF OPTIONS TABLE
+        --CALLBACK_MANAGER:RegisterCallback("LAM-PanelControlsCreated", AFLAMPanelCreated)
+        AF.LAM:RegisterOptionControls(AF.name .. "_LAM", optionsTable)
+    end
+
+    --Build the LAM options menu now
+    BuildAddonMenu()
+end

@@ -1,12 +1,22 @@
+if AdvancedFilters == nil then AdvancedFilters = {} end
 local textures = {
     All = "esoui/art/inventory/inventory_tabicon_all_%s.dds",
     Trophy = "AdvancedFilters/assets/miscellaneous/trophy/trophy_%s.dds",
+    TreasureMaps = "EsoUI/Art/TradingHouse/Tradinghouse_Trophy_Treasure_Map_%s.dds",
+    --SurveyReport = "EsoUI/Art/TradingHouse/Tradinghouse_Trophy_Survey_Report_%s.dds",
+    --KeyFragment = "EsoUI/Art/TradingHouse/Tradinghouse_Trophy_Key_Fragment_%s.dds",
+    --MuseumPiece = "EsoUI/Art/TradingHouse/Tradinghouse_Trophy_Museum_Piece_%s.dds",
+    RecipeFragment = "EsoUI/Art/TradingHouse/Tradinghouse_Trophy_Recipe_Fragment_%s.dds",
+    Scroll = "EsoUI/Art/TradingHouse/Tradinghouse_Trophy_Scroll_%s.dds",
 
     --WEAPONS
     OneHand = "AdvancedFilters/assets/weapons/onehanded_%s.dds",
     TwoHand = "AdvancedFilters/assets/weapons/twohanded_%s.dds",
     Bow = "AdvancedFilters/assets/weapons/bow_%s.dds",
     DestructionStaff = "AdvancedFilters/assets/weapons/destruction_%s.dds",
+    Fire = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_Staff_Flame_%s.dds",
+    Frost = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_Staff_Frost_%s.dds",
+    Lightning = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_Staff_Lightning_%s.dds",
     HealStaff = "AdvancedFilters/assets/weapons/healing_%s.dds",
 
     --ARMOR
@@ -15,8 +25,13 @@ local textures = {
     LightArmor = "esoui/art/icons/progression_tabicon_armorlight_%s.dds",
     Clothing = "AdvancedFilters/assets/apparel/clothing_%s.dds",
     Shield = "AdvancedFilters/assets/apparel/shield_%s.dds",
-    Jewelry = "AdvancedFilters/assets/apparel/jewelry_%s.dds",
     Vanity = "AdvancedFilters/assets/apparel/vanity_%s.dds",
+    Armor = "EsoUI/Art/Inventory/inventory_tabIcon_armor_%s.dds",
+
+    --Jewelry
+    Jewelry = "AdvancedFilters/assets/apparel/jewelry_%s.dds",
+    Neck = "AdvancedFilters/assets/apparel/neck_%s.dds",
+    Ring = "AdvancedFilters/assets/apparel/ring_%s.dds",
 
     --CONSUMABLES
     Crown = "esoui/art/housing/keyboard/furniture_tabicon_crownfurnishings_%s.dds",
@@ -26,7 +41,7 @@ local textures = {
     Potion = "AdvancedFilters/assets/consumables/potion/potion_%s.dds",
     Poison = "AdvancedFilters/assets/consumables/poison/poison_%s.dds",
     Motif = "AdvancedFilters/assets/consumables/motifs/motif_%s.dds",
-    Writ = "esoui/art/crafting/formulae_tabicon_%s.dds",
+    Writ = "EsoUI/Art/TradingHouse/Tradinghouse_Master_Writ_%s.dds",
     Container = "AdvancedFilters/assets/consumables/containers/container_%s.dds",
     Repair = "AdvancedFilters/assets/consumables/repair/repair_%s.dds",
 
@@ -36,6 +51,7 @@ local textures = {
     Ornamental = "esoui/art/treeicons/housing_indexicon_gallery_%s.dds",
     Seating = "esoui/art/treeicons/collection_indexicon_furnishings_%s.dds",
     TargetDummy = "esoui/art/treeicons/collection_indexicon_weapons+armor_%s.dds",
+    Furnishings = "EsoUI/Art/Crafting/provisioner_indexIcon_furnishings_%s.dds",
 
     --MATERIALS
     Blacksmithing = "esoui/art/inventory/inventory_tabIcon_Craftbag_blacksmithing_%s.dds",
@@ -47,6 +63,7 @@ local textures = {
     Style = "esoui/art/inventory/inventory_tabIcon_Craftbag_styleMaterial_%s.dds",
     WeaponTrait = "AdvancedFilters/assets/materials/wtrait/wtrait_%s.dds",
     ArmorTrait = "AdvancedFilters/assets/materials/atrait/atrait_%s.dds",
+    AllTraits = "EsoUI/Art/Inventory/inventory_tabIcon_Craftbag_itemTrait_%s.dds",
 
     --MISCELLANEOUS
     Glyphs = "AdvancedFilters/assets/miscellaneous/glyphs/glyphs_%s.dds",
@@ -56,6 +73,7 @@ local textures = {
     Tool = "AdvancedFilters/assets/consumables/repair/repair_%s.dds",
     Fence = "esoui/art/vendor/vendor_tabicon_fence_%s.dds",
     Trash = "AdvancedFilters/assets/miscellaneous/trash/trash_%s.dds",
+    Disguise = "AdvancedFilters/assets/apparel/vanity_%s.dds",
 
     --JUNK
     Weapon = "esoui/art/inventory/inventory_tabIcon_weapons_%s.dds",
@@ -66,9 +84,36 @@ local textures = {
 
     --CRAFT BAG
     --BLACKSMITHING
-    RawMaterial = "AdvancedFilters/assets/craftbag/smithing/rawmaterial_%s.dds",
-    RefinedMaterial = "AdvancedFilters/assets/craftbag/smithing/material_%s.dds",
-    Temper = "esoui/art/worldmap/map_ava_tabIcon_resourceProduction_%s.dds",
+    RawMaterialSmithing = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Blacksmithing_Rawmats_%s.dds",
+    RefinedMaterialSmithing = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Blacksmithing_Mats_%s.dds",
+    Temper = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Blacksmithing_Temper_%s.dds",
+
+    --Clothier
+    RawMaterialClothier = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Tailoring_Rawmats_%s.dds",
+    RefinedMaterialClothier = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Tailoring_Mats_%s.dds",
+    Tannin = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Tailoring_Tannin_%s.dds",
+
+    --Woodworking
+    RawMaterialWoodworking = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Woodworking_Rawmats_%s.dds",
+    RefinedMaterialWoodworking = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Woodworking_Mats_%s.dds",
+    Resin = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Woodworking_Resin_%s.dds",
+
+    --Jewelry crafting
+    JewelryCrafting = "EsoUI/Art/Inventory/inventory_tabIcon_Craftbag_jewelrycrafting_%s.dds",
+    JewelryAllTrait = "AdvancedFilters/assets/apparel/jewelry_%s.dds",
+    JewelryRawTrait = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Style_RawMats_%s.dds",
+    JewelryRefinedTrait = "EsoUI/Art/Crafting/jewelry_tabIcon_icon_%s.dds",
+    RawMaterialJewelry = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Jewelrymaking_Rawmats_%s.dds",
+    RefinedMaterialJewelry = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Jewelrymaking_Mats_%s.dds",
+    RawPlating = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Jewelrymaking_Rawplating_%s.dds",
+    Plating = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Jewelrymaking_Plating_%s.dds",
+
+    --Trait
+    RawTrait = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Style_RawMats_%s.dds",
+    RefinedTrait = "EsoUI/Art/Inventory/inventory_tabIcon_Craftbag_styleMaterial_%s.dd",
+
+    --Style
+    RawMaterialStyle = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Style_RawMats_%s.dds",
 
     --ALCHEMY
     Reagent = "AdvancedFilters/assets/craftbag/alchemy/reagent_%s.dds",
@@ -80,20 +125,34 @@ local textures = {
 
     --PROVISIONING
     OldIngredient = "esoui/art/worldmap/map_ava_tabicon_foodfarm_%s.dds",
-    RareIngredient = "esoui/art/crafting/blueprints_tabicon_%s.dds",
+    RareIngredient = "EsoUI/Art/TradingHouse/Tradinghouse_Materials_Provisioning_Rare_%s.dds",
 
     --STYLE
     NormalStyle = "esoui/art/progression/progression_indexicon_race_%s.dds",
     RareStyle = "esoui/art/progression/progression_indexicon_world_%s.dds",
     AllianceStyle = "esoui/art/charactercreate/charactercreate_raceicon_%s.dds",
     ExoticStyle = "esoui/art/icons/progression_tabicon_magma_%s.dds",
+
+    --Armor part types
+    Chest = "EsoUI/Art/TradingHouse/Tradinghouse_Apparel_Chest_%s.dds",
+    Feet = "EsoUI/Art/TradingHouse/Tradinghouse_Apparel_Feet_%s.dds",
+    Hand = "EsoUI/Art/TradingHouse/Tradinghouse_Apparel_Hands_%s.dds",
+    Head = "EsoUI/Art/TradingHouse/Tradinghouse_Apparel_Head_%s.dds",
+    Legs = "EsoUI/Art/TradingHouse/Tradinghouse_Apparel_Legs_%s.dds",
+    Shoulders = "EsoUI/Art/TradingHouse/Tradinghouse_Apparel_Shoulders_%s.dds",
+    Waist = "EsoUI/Art/TradingHouse/Tradinghouse_Apparel_Waist_%s.dds",
+    --Weapon part types
+    Axe = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_1h_Axe_%s.dds",
+    Dagger = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_1h_Dagger_%s.dds",
+    Hammer = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_1h_Mace_%s.dds",
+    Sword = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_1h_Sword_%s.dds",
+    TwoHandAxe = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_2h_Axe_%s.dds",
+    TwoHandHammer = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_2h_Mace_%s.dds",
+    TwoHandSword = "EsoUI/Art/TradingHouse/Tradinghouse_Weapons_2h_Sword_%s.dds",
+
+    --Retrait
+    Retrait = "EsoUI/Art/Crafting/retrait_tabIcon_%s.dds",
 }
-
---CLOTHING
-textures.Resin = textures.Temper
-
---WOODWORKING
-textures.Tannin = textures.Temper
 
 --ALCHEMY
 textures.Water = textures.Potion
@@ -108,5 +167,11 @@ textures.CrownStyle = textures.Crown
 
 --FURNISHING MATERIAL
 textures.FurnishingMat = textures.Seating
+
+--GLYPHS
+textures.WeaponGlyph = textures.OneHand
+textures.ArmorGlyph = textures.Heavy
+textures.JewelryGlyph = textures.Jewelry
+
 
 AdvancedFilters.textures = textures

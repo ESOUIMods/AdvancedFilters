@@ -1,29 +1,27 @@
 ## Title: Advanced Filters
 ## Author: Randactyl
-## Version: 1.5.0.1
-## APIVersion: 100021
-## OptionalDependsOn: LibFilters-2.0
+## Version: 1.5.1.5
+## AddOnVersion: 1515
+## APIVersion: 100027 100028
+## DependsOn: LibFilters-3.0 LibCustomMenu libCommonInventoryFilters
+## OptionalDependsOn: LibAddonMenu-2.0 CraftBagExtended
+## SavedVariables: AdvancedFilters_Settings
 
-lib\LibStub\LibStub.lua
+lib/LibMotifCategories-1.0/LibMotifCategories-1.0.lua
 
-lib\LibFilters-2.0\LibFilters-2.0.lua
-lib\LibFilters-2.0\helper.lua
-lib\libCommonInventoryFilters\libCommonInventoryFilters.lua
-lib\LibCustomMenu\LibCustomMenu.lua
-lib\LibMotifCategories-1.0\LibMotifCategories-1.0.lua
-lib\LibCustomTitles\LibCustomTitles.lua
-
-main.lua
+constants.lua
 util.lua
-strings\en.lua
-strings\$(language).lua
+main.lua
+strings/en.lua
+strings/$(language).lua
 textures.lua
 AF_FilterBar.xml
 AF_FilterBar.lua
 data.lua
+menu.lua
 
-extrafilters\LevelFilters.lua
-extrafilters\NewMotif.lua
-extrafilters\MotifKnowledge.lua
-extrafilters\EquipmentMotifCategories.lua
-extrafilters\BoPTradeableFilters.lua
+extrafilters/LevelFilters.lua
+extrafilters/NewMotif.lua
+extrafilters/MotifKnowledge.lua
+extrafilters/EquipmentMotifCategories.lua
+extrafilters/BoPTradeableFilters.lua

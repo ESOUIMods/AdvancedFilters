@@ -1,5 +1,7 @@
-local cpIcon = zo_iconFormat("/esoui/art/menubar/gamepad/gp_playermenu_icon_champion.dds", 18, 18)
 local util = AdvancedFilters.util
+local checkCraftingStationSlot = AdvancedFilters.checkCraftingStationSlot
+
+local cpIcon = zo_iconFormat("/esoui/art/menubar/gamepad/gp_playermenu_icon_champion.dds", 18, 18)
 
 --[[----------------------------------------------------------------------------
     The anonymous function returned by this function handles the actual
@@ -13,7 +15,8 @@ local util = AdvancedFilters.util
         is active.
 --]]----------------------------------------------------------------------------
 local function GetFilterCallbackForLevel(minLevel, maxLevel)
-    return function(slot)
+    return function(slot, slotIndex)
+        slot = checkCraftingStationSlot(slot, slotIndex)
         local itemLink = util.GetItemLink(slot)
         local level = GetItemLinkRequiredLevel(itemLink)
         local cp = GetItemLinkRequiredChampionPoints(itemLink)
@@ -72,6 +75,11 @@ local strings = {
     ["cp130-140"] = cpIcon .. "130-140",
     ["cp150-160"] = cpIcon .. "150-160",
 }
+local stringsDE = {
+    --Remember to provide a string for your submenu if using one (see below).
+    ["LevelFilters"] = "Level Filter",
+}
+stringsDE = setmetatable(stringsDE, {__index = strings})
 
 --[[----------------------------------------------------------------------------
     This section packages the data for Advanced Filters to use.
@@ -93,36 +101,20 @@ local strings = {
 local filterInformation = {
     submenuName = "LevelFilters",
     callbackTable = fullLevelDropdownCallbacks,
-    filterType = ITEMFILTERTYPE_WEAPONS,
+    filterType = {
+        ITEMFILTERTYPE_ALL,
+        ITEMFILTERTYPE_WEAPONS, ITEMFILTERTYPE_ARMOR,
+        ITEMFILTERTYPE_JEWELRY,
+    },
     subfilters = {"All",},
     enStrings = strings,
-    deStrings = strings,
+    deStrings = stringsDE,
     frStrings = strings,
     ruStrings = strings,
     esStrings = strings,
 }
-
 --[[----------------------------------------------------------------------------
     Register your filters by passing your filter information to this function.
---]]----------------------------------------------------------------------------
-AdvancedFilters_RegisterFilter(filterInformation)
-
---[[----------------------------------------------------------------------------
-    If you want your filters to show up under more than one main filter,
-        redefine filterInformation to use the new filterType.
-    The shorthand version (not including optional languages) is shown here.
---]]----------------------------------------------------------------------------
-filterInformation = {
-    submenuName = "LevelFilters",
-    callbackTable = fullLevelDropdownCallbacks,
-    filterType = ITEMFILTERTYPE_ARMOR,
-    subfilters = {"All",},
-    enStrings = strings,
-}
-
---[[----------------------------------------------------------------------------
-    Again, register your filters by passing your new filter information to this
-        function.
 --]]----------------------------------------------------------------------------
 AdvancedFilters_RegisterFilter(filterInformation)
 
@@ -132,5 +124,8 @@ AdvancedFilters_RegisterFilter(filterInformation)
 --]]----------------------------------------------------------------------------
 filterInformation.filterType = ITEMFILTERTYPE_CONSUMABLE
 filterInformation.subfilters = {"Food", "Drink", "Potion", "Poison",}
-
+--[[----------------------------------------------------------------------------
+    Again, register your filters by passing your new filter information to this
+        function.
+--]]----------------------------------------------------------------------------
 AdvancedFilters_RegisterFilter(filterInformation)

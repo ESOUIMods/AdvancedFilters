@@ -1,8 +1,10 @@
 local util = AdvancedFilters.util
+local checkCraftingStationSlot = AdvancedFilters.checkCraftingStationSlot
 local lib = util.LibMotifCategories
 
 local function GetFilterCallbackForMotifCategory(motifCategory)
-    return function(slot)
+    return function(slot, slotIndex)
+        slot = checkCraftingStationSlot(slot, slotIndex)
         local itemLink = util.GetItemLink(slot)
 
         return lib:GetMotifCategory(itemLink) == motifCategory
@@ -25,12 +27,21 @@ local strings = {
     ["ExoticStyle"] = lib:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_EXOTIC),
     ["DroppedStyle"] = lib:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_DROPPED),
 }
+local stringsDE = {
+    ["MotifCategories"] = "Motiv Kategorien",
+    ["NormalStyle"] = lib:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_NORMAL),
+    ["RareStyle"] = lib:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_RARE),
+    ["AllianceStyle"] = lib:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_ALLIANCE),
+    ["ExoticStyle"] = lib:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_EXOTIC),
+    ["DroppedStyle"] = lib:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_DROPPED),
+}
 
 local filterInformation = {
     submenuName = "MotifCategories",
     callbackTable = dropdownCallbacks,
     filterType = ITEMFILTERTYPE_WEAPONS,
     subfilters = {"All",},
+    deStrings = stringsDE,
     enStrings = strings,
 }
 
