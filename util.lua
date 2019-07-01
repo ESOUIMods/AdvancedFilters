@@ -459,29 +459,35 @@ end
 function util.BuildDropdownCallbacks(groupName, subfilterName)
     local doDebugOutput = AF.settings.doDebugOutput
     local subfilterNameOrig = subfilterName
-    if (subfilterName == "Heavy" or subfilterName == "Medium"
-    or subfilterName == "LightArmor" or subfilterName == "Clothing")
-    and groupName == "Armor" then
-        subfilterName = "Body"
+    if groupName == "Armor" and (subfilterName == "Heavy" or subfilterName == "Medium" or subfilterName == "LightArmor" or subfilterName == "Clothing") then subfilterName = "Body" end
+    if doDebugOutput then
+        d("=========================\n[AF]]BuildDropdownCallbacks - groupName: " .. tostring(groupName) .. ", subfilterName: " .. tostring(subfilterName) .. ", subFilterNameOrig: " ..tostring(subfilterNameOrig))
     end
---d("[AF]]BuildDropdownCallbacks - groupName: " .. tostring(groupName) .. ", subfilterName: " .. tostring(subfilterName))
     local callbackTable = {}
     local keys = AF.dropdownCallbackKeys
     local craftBagFilterGroups = AF.craftBagFilterGroups
     local subfilterCallbacks = AF.subfilterCallbacks
-    ------------------------------------------------------------------
+
+    ------------------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------------------
     local function insertAddon(addonTable, groupNameLocal, subfilterNameLocal)
         groupNameLocal = groupNameLocal or ""
         subfilterNameLocal = subfilterNameLocal or subfilterNameLocal
---[[
-    local addonName = ""
-    if addonTable.name ~= nil and addonTable.name ~= "" then
-        addonName = addonTable.name
-    else
-        addonName = addonTable.callbackTable[1].name
-    end
-    d("->insertAddon addonName: " .. tostring(addonName) ..", groupNameLocal: " .. tostring(groupNameLocal) .. ", subfilterNameLocal: " .. tostring(subfilterNameLocal))
-]]
+        if AF.settings.doDebugOutput then
+            AF._addonTable = AF._addonTable or {}
+            table.insert(AF._addonTable, addonTable)
+        end
+        local addonName = ""
+        if addonTable.name ~= nil and addonTable.name ~= "" then
+            addonName = addonTable.name
+        elseif addonTable.submenuName ~= nil and addonTable.submenuName ~= "" then
+            addonName = addonTable.submenuName
+        else
+            addonName = addonTable.callbackTable[1].name
+        end
+        if doDebugOutput then d("->insertAddon addonName: '" .. tostring(addonName) .."', groupNameLocal: '" .. tostring(groupNameLocal) .. "', subfilterNameLocal: '" .. tostring(subfilterNameLocal).. "'") end
+
         --generate information if necessary
         if addonTable.generator then
             local strings
@@ -495,17 +501,20 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
 
         --Is the addon filter not to be shown at some libFilter panels?
         if addonTable.excludeFilterPanels ~= nil then
+            if doDebugOutput then d(">>excludeFilterPanels: Yes") end
             local filterType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
             if type(addonTable.excludeFilterPanels) == "table" then
                 for _, filterPanelToExclude in pairs(addonTable.excludeFilterPanels) do
                     if filterType == filterPanelToExclude then
---d(">>>insertAddon - filterPanelToExclude: " ..tostring(filterPanelToExclude))
+                        if doDebugOutput then d(">>>insertAddon - filterPanelToExclude: " ..tostring(filterPanelToExclude)) end
                         return
+                    else
+                        if doDebugOutput then d(">>>insertAddon - filterPanelToExclude: " ..tostring(filterPanelToExclude) .. " <> filterType: "..tostring(filterType)) end
                     end
                 end
             else
                 if filterType == addonTable.excludeFilterPanels then
---d(">>>insertAddon - filterPanelToExclude: " ..tostring(addonTable.excludeFilterPanels))
+                    if doDebugOutput then d(">>>insertAddon - filterPanelToExclude: " ..tostring(addonTable.excludeFilterPanels)) end
                     return
                 end
             end
@@ -513,6 +522,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
 
         --Only add the entries if the group name specified "to be used" are the given ones
         if groupNameLocal ~= AF_CONST_ALL and addonTable.onlyGroups ~= nil then
+            if doDebugOutput then d(">>onlyGroups: Yes") end
             if type(addonTable.onlyGroups) == "table" then
                 local allowedgroupNameLocals = {}
                 for _, groupNameLocalToCheck in pairs(addonTable.onlyGroups) do
@@ -525,7 +535,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
                     allowedgroupNameLocals[groupNameLocalToCheck] = true
                 end
                 if not allowedgroupNameLocals[groupNameLocal] then
---d("-->insertAddon - onlyGroups: " ..tostring(groupNameLocal))
+                    if doDebugOutput then d("-->insertAddon - onlyGroups, not allowed group: " ..tostring(groupNameLocal)) end
                     return
                 end
             else
@@ -536,13 +546,13 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
                         allowedgroupNameLocals[craftBagGroup] = true
                     end
                     if not allowedgroupNameLocals[groupNameLocal] then
-                        --d("-->insertAddon - onlyGroups: " ..tostring(groupNameLocal))
+                        if doDebugOutput then d("-->insertAddon - onlyGroups, not allowed group: " ..tostring(groupNameLocal)) end
                         return
                     end
 
                 else
                     if groupNameLocal ~= addonTable.onlyGroups then
-                        --d("-->insertAddon - onlyGroups: " ..tostring(addonTable.onlyGroups))
+                        if doDebugOutput then d("-->insertAddon - onlyGroups, not allowed group: " ..tostring(addonTable.onlyGroups)) end
                         return
                     end
                 end
@@ -551,16 +561,19 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
 
         --Should any subfilter be excluded?
         if addonTable.excludeSubfilters ~= nil then
+            if doDebugOutput then d(">>excludeSubfilters: Yes") end
             if type(addonTable.excludeSubfilters) == "table" then
                 for _, subfilterNameLocalToExclude in pairs(addonTable.excludeSubfilters) do
                     if subfilterNameOrig == subfilterNameLocalToExclude or subfilterNameLocal == subfilterNameLocalToExclude then
---d("--->insertAddon - excludeSubfilters: " ..tostring(subfilterNameLocalToExclude))
+                        if doDebugOutput then d("--->insertAddon - excludeSubfilters: " ..tostring(subfilterNameLocalToExclude)) end
                         return
+                    else
+                        if doDebugOutput then d("--->insertAddon - excludeSubfilter '" ..tostring(subfilterNameLocalToExclude) .. "' <> ' " ..tostring(subfilterNameOrig) .. "/" .. tostring(subfilterNameLocal)) end
                     end
                 end
             else
                 if subfilterNameOrig == addonTable.excludeSubfilters or subfilterNameLocal == addonTable.excludeSubfilters then
---d("--->insertAddon - excludeSubfilters: " ..tostring(subfilterNameLocal))
+                    if doDebugOutput then d("--->insertAddon - excludeSubfilters: " ..tostring(subfilterNameLocal)) end
                     return
                 end
             end
@@ -587,12 +600,12 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
                 for _, callbackTableEntry in ipairs(callbackTable) do
                     if callbackTableEntry.submenuName then
                         if callbackTableEntry.submenuName == compareName then
---d(">Duplicate submenu entry: " .. tostring(callbackTableEntry.submenuName))
+                            if doDebugOutput then d(">Duplicate submenu entry: " .. tostring(callbackTableEntry.submenuName)) end
                             return
                         end
                     else
                         if callbackTableEntry.name and callbackTableEntry.name == compareName then
---d(">Duplicate entry: " .. tostring(callbackTableEntry.name))
+                            if doDebugOutput then d(">Duplicate entry: " .. tostring(callbackTableEntry.name)) end
                             return
                         end
                     end
@@ -607,13 +620,14 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
         else
             --insert all callbackTable entries
             local currentAddonTable = addonTable.callbackTable
-
             for _, callbackEntry in ipairs(currentAddonTable) do
                 table.insert(callbackTable, callbackEntry)
             end
         end
     end -- function "insertAddon"
-    ------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------------------
 
     -- insert global AdvancedFilters "All" filters
     for _, callbackEntry in ipairs(subfilterCallbacks.All.dropdownCallbacks) do
@@ -631,7 +645,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
             if keys[groupName] == nil then
                 d("--- ERROR --- [AF]util.BuildDropdownCallbacks-GroupName is missing in keys: " ..tostring(groupName) .. ". PLease contact the author of ".. tostring(AF.name) .. " at the website in the settings menu (link can be found at the top of the settings page)!")
                 return
-            --else
+                --else
                 --d("[AF].util.BuildDropdownCallbacks-GroupName: " ..tostring(groupName))
             end
             --insert all default filters for each subfilter
@@ -645,12 +659,12 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
             --insert all filters provided by addons
             --but check if the current panel should show the addon filters for "all" too
             if util.checkIfPanelShouldShowAddonAllDropdownFilters(AF.currentInventoryType) then
---d(">show GROUP addon dropdown 'ALL' filters")
+                if doDebugOutput then d(">add addon dropdown filters to group's '" .. tostring(groupName) .."' 'ALL' filters") end
                 for _, addonTable in ipairs(subfilterCallbacks[groupName].addonDropdownCallbacks) do
                     insertAddon(addonTable, groupName, subfilterName)
                 end
             end
-        --Subfilter is NOT the ALL entry
+            --Subfilter is NOT the ALL entry
         else
             --insert filters for provided subfilter
             local currentSubfilterTable = subfilterCallbacks[groupName][subfilterName]
@@ -1141,10 +1155,11 @@ function util.getInvItemCount(freeSlotType, isCraftingInvType)
 end
 
 --Update the inventory infobar lFreeSlot label with the item filtered count
-function util.updateInventoryInfoBarCountLabel(invType, isCraftingInvType)
+function util.updateInventoryInfoBarCountLabel(invType, isCraftingInvType, isCalledFromExternalAddon)
     invType = invType or AF.currentInventoryType
     isCraftingInvType = isCraftingInvType or util.IsCraftingStationInventoryType(invType)
---d("[util.updateInventoryInfoBarCountLabel]invType: " ..tostring(invType) .. ", isCraftingInvType: " .. tostring(isCraftingInvType))
+    isCalledFromExternalAddon = isCalledFromExternalAddon or false
+--d("[util.updateInventoryInfoBarCountLabel]invType: " ..tostring(invType) .. ", isCraftingInvType: " .. tostring(isCraftingInvType) .. ", isCalledFromExternalAddon: " .. tostring(isCalledFromExternalAddon))
     --Update the count of shown/filtered items in the inventory FreeSlots label
     if invType ~= nil then
         if not isCraftingInvType then
@@ -1315,8 +1330,6 @@ end
 
 --Update the crafting table's inventory item count etc. from external addons
 function util.UpdateCraftingInventoryFilteredCount(invType)
-    --SMITHING.deconstructionPanel.inventory.control:GetNamedChild("InfoBar")
-    local infoBar = AF.controlsForChecks.smithing.deconstructionPanel.inventory.control:GetNamedChild("InfoBar")
-    if infoBar == nil then return false end
-    UpdateInventorySlots(infoBar)
+--d("[AF]util.UpdateCraftingInventoryFilteredCount - invType: " ..tostring(invType))
+    util.updateInventoryInfoBarCountLabel(invType, nil, true)
 end

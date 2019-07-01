@@ -707,7 +707,7 @@ d(">NO GuildStore itemfiltertype found!")
         --Overwrite the function UpdateInventorySlots from esoui/esoui/ingame/inventory/inventorytemplates.lua
         --for the crafting stations, in order to update the filter count amount properly in the infoBars
         function UpdateInventorySlots(infoBar)
---d("[AF]UpdateInventorySlots: " .. tostring(infoBar:GetName()))
+--d(">>>>[AF]UpdateInventorySlots: " .. tostring(infoBar:GetName()))
             --Only for crafting station inventory types as the others are managed within function ZO_InventoryManager:UpdateFreeSlots(inventoryType) above!
             local invType = AF.currentInventoryType
             local isCraftingInvType = IsCraftingStationInventoryType(invType)

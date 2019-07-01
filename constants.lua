@@ -4,7 +4,7 @@ local AF = AdvancedFilters
 --Addon base variables
 AF.name = "AdvancedFilters"
 AF.author = "ingeniousclown, Randactyl, Baertram"
-AF.version = "1.5.1.5"
+AF.version = "1.5.1.7"
 AF.savedVarsVersion = 1.511
 AF.website = "http://www.esoui.com/downloads/info245-AdvancedFilters.html"
 AF.currentInventoryType = INVENTORY_BACKPACK
@@ -26,7 +26,8 @@ AF.LAM = LibAddonMenu2
 if AF.LAM == nil and LibStub then AF.LAM = LibStub('LibAddonMenu-2.0', true) end
 ------------------------------------------------------------------------------------------------------------------------
 --LibMotifCategories-1.0
-util.LibMotifCategories = LibStub("LibMotifCategories-1.0", true)
+util.LibMotifCategories = LibMotifCategories
+if not util.LibMotifCategories and LibStub then util.LibMotifCategories = LibStub("LibMotifCategories-1.0", true) end
 if not util.LibMotifCategories then d("[AdvancedFilters]ERROR: Needed library LibMotifCategories-1.0 is not loaded. This addon will not work properly!") return end
 ------------------------------------------------------------------------------------------------------------------------
 -- Libraries - END
