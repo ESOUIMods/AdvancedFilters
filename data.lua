@@ -309,6 +309,28 @@ local function GetFilterCallbackForStyleMaterial(categoryConst, checkOnlyJunk)
     end
 end
 
+local function GetFilterCallbackForItemTypeAndSpecializedItemtype(sItemTypes, sSpecializedItemTypes, checkOnlyJunk)
+    checkOnlyJunk = checkOnlyJunk or false
+
+    return function(slot, slotIndex)
+        slot = checkCraftingStationSlot(slot, slotIndex)
+        if(not sItemTypes and not sSpecializedItemTypes) then return checkNoFilterTypesOrIsJunk(slot, checkOnlyJunk) end
+        if checkOnlyJunk then if not checkNoFilterTypesOrIsJunk(slot, true) then return false end end
+        local itemLink = util.GetItemLink(slot)
+        local itemType, specializedItemType = GetItemLinkItemType(itemLink)
+
+        for i = 1, #sItemTypes do
+            if sItemTypes[i] == itemType then
+                for j = 1, #sSpecializedItemTypes do
+                    if sSpecializedItemTypes[j] == specializedItemType then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+end
+
 local function GetFilterCallbackForSpecializedItemtype(sItemTypes, checkOnlyJunk, checkItemTypeToo)
     checkOnlyJunk = checkOnlyJunk or false
     checkItemTypeToo = checkItemTypeToo or false
@@ -642,7 +664,7 @@ AF.subfilterCallbacks = {
             dropdownCallbacks = {},
         },
         Container = {
-            filterCallback = GetFilterCallback({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY}),
+            filterCallback = GetFilterCallbackForItemTypeAndSpecializedItemtype({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY, ITEMFILTERTYPE_PROVISIONING}, {SPECIALIZED_ITEMTYPE_CONTAINER}),
             dropdownCallbacks = {},
         },
         Repair = {

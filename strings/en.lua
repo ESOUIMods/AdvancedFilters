@@ -1,7 +1,7 @@
 local util = AdvancedFilters.util
 local strings = {
     --SHARED
-    All = "All",
+    All = util.Localize(SI_ITEMFILTERTYPE0),
     Trophy = util.Localize(SI_ITEMTYPE5),
     TreasureMaps = util.Localize(SI_SPECIALIZEDITEMTYPE100),
     SurveyReport = util.Localize(SI_SPECIALIZEDITEMTYPE101),

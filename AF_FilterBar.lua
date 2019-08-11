@@ -35,7 +35,8 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
 
     self.label = self.control:GetNamedChild("Label")
     self.label:SetModifyTextType(MODIFY_TEXT_TYPE_UPPERCASE)
-    self.label:SetText(AF.strings["All"])
+    local allText = AF.strings[AF_CONST_ALL] or AF_CONST_ALL
+    self.label:SetText(allText)
 
     self.divider = self.control:GetNamedChild("Divider")
 

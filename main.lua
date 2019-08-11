@@ -1,35 +1,4 @@
---Version 1.5.1.3---
---Updated FR.lua tranbslation file (thanks to lexo1000)
 --ToDo: 09.08.2019
---1. Error message on PTS if openeing the Enchanting table:
---[[
-user:/AddOns/AdvancedFilters/main.lua:213: attempt to index a nil value
-stack traceback:
-user:/AddOns/AdvancedFilters/main.lua:213: in function 'ShowSubfilterBar'
-|caaaaaa<Locals> craftingType = 3, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:165, doDebugOutput = false, subfilterGroup = tbl </Locals>|r
-user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
-]]
-
---2. Error message upon doing something at crafting station (User: Phuein)
---[[
-https://imgur.com/7btGZff
-]]
-
---3. Error message upon loading of the game on live (User: darkedone02)
---Got this error when I launched.
---[[
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: attempt to index a nil value
-stack traceback:
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: in function 'AF_FilterBar:Initialize'
-|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, _ = true, _ = 9, _ = ud, _ = 9, _ = 0, offsetY = 63, parents = tbl, parent = ud </Locals>|r
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:9: in function 'AF_FilterBar:New'
-|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, obj = tbl </Locals>|r
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:364: in function 'AF.CreateSubfilterBars'
-|caaaaaa<Locals> doDebugOutput = false, inventoryNames = tbl, tradeSkillNames = tbl, filterTypeNames = tbl, subfilterGroups = tbl, subfilterButtonNames = tbl, inventoryType = 16, tradeSkillTypeSubFilterGroup = tbl, tradeSkillType = 1, subfilterGroup = tbl, itemFilterType = 0, _ = tbl </Locals>|r
-user:/AddOns/AdvancedFilters/main.lua:890: in function 'AdvancedFilters_Loaded'
-|caaaaaa<Locals> eventCode = 65536, addonName = "AdvancedFilters" </Locals>|r
-]]
-
 --4. Item "" is not showing on PTS below  (User: Thallassa)
 --[[
 Hi Baertram,
@@ -40,6 +9,12 @@ I'm not actually sure what the other two hidden items are (I only had 3 of the d
 I didn't check if the clockwork city documents are hidden as I am not eligible to buy them.
 
 They're on Faustina Curio, who stands next to the writ turn-ins in mournhold, elden root, and wayrest. You need master writ vouchers to buy them.
+--Itemlink: |H1:item:153621:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
+--itemType: 18 ITEMFILTERTYPE_PROVISIONING, specializedItemType: 850 SPECIALIZED_ITEMTYPE_CONTAINER
+
+-->Bugfix idea:
+Added to subfilter consumables->Container = {
+            filterCallback = function() return GetFilterCallbackForSpecializedItemtype({SPECIALIZED_ITEMTYPE_CONTAINER}) or GetFilterCallback({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY}) end,
 ]]
 
 --6. Guild store sell tab showas subcategories enabled where there are no items in there to sell (maybe bound items exist, or stolen ones)
@@ -59,6 +34,48 @@ user:/AddOns/AdvancedFilters/main.lua:277: in function 'ShowSubfilterBar'
 |caaaaaa<Locals> currentFilter = 0, craftingType = 0, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:205, doDebugOutput = false, subfilterGroup = tbl, subfilterBar = tbl, isCraftingInventoryType = false </Locals>|r
 user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
 ]]
+
+--3. Error message upon loading of the game on live (User: darkedone02)
+--Got this error when I launched.
+--[[
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: attempt to index a nil value
+stack traceback:
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: in function 'AF_FilterBar:Initialize'
+|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, _ = true, _ = 9, _ = ud, _ = 9, _ = 0, offsetY = 63, parents = tbl, parent = ud </Locals>|r
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:9: in function 'AF_FilterBar:New'
+|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, obj = tbl </Locals>|r
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:364: in function 'AF.CreateSubfilterBars'
+|caaaaaa<Locals> doDebugOutput = false, inventoryNames = tbl, tradeSkillNames = tbl, filterTypeNames = tbl, subfilterGroups = tbl, subfilterButtonNames = tbl, inventoryType = 16, tradeSkillTypeSubFilterGroup = tbl, tradeSkillType = 1, subfilterGroup = tbl, itemFilterType = 0, _ = tbl </Locals>|r
+user:/AddOns/AdvancedFilters/main.lua:890: in function 'AdvancedFilters_Loaded'
+|caaaaaa<Locals> eventCode = 65536, addonName = "AdvancedFilters" </Locals>|r
+]]
+
+--______________________________________________________________________________________________________________________
+--                                                  NOT REPLICABLE
+--______________________________________________________________________________________________________________________
+--Not replicable 2019-08-11
+--1. Error message on PTS if opening the Enchanting table:
+--[[
+local subfilterBar = subfilterGroup[craftingType][currentFilter]
+-subfilterBar was missing somehow-
+
+user:/AddOns/AdvancedFilters/main.lua:213: attempt to index a nil value
+stack traceback:
+user:/AddOns/AdvancedFilters/main.lua:213: in function 'ShowSubfilterBar'
+|caaaaaa<Locals> craftingType = 3, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:165, doDebugOutput = false, subfilterGroup = tbl </Locals>|r
+user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
+]]
+
+--Not replicable 2019-08-11
+--2. Error message upon doing something at crafting station (User: Phuein)
+--[[
+-subfilterBar was missing somehow-
+-> local subfilterBar = subfilterGroup[craftingType][currentFilter]
+
+https://imgur.com/7btGZff
+user:/AddOns/AdvancedFilters/main.lua:213 attempt o index a nil value, craftingType = 1
+]]
+
 
 
 if AdvancedFilters == nil then AdvancedFilters = {} end
@@ -86,8 +103,8 @@ local function showChatDebug(functionName, chatOutputVars)
     chatOutputVars = chatOutputVars or ""
     d(">====================================>")
     d("[AdvancedFilters - ERROR]" .. tostring(functionNameStr))
-    d("!> Please answer the following 4 questions and send the answers (and if given: the variables shown in the lines starting with -> after the questions) to the addon's comments of AdvancedFilters @www.esoui.com:\n https://bit.ly/2IlJ56J")
-    d("1) What did you do?\n2)Where did you do it?\n3)Did you test if the error happenes with only the addon AdvancedFilters activated (please test this!)?\n4)If error happens with other addons active: Which other addons are you using?")
+    d("!> Please answer the following 4 questions and send the answers (and if given: the variables shown in the lines, starting with ->, after the questions) to the addon's comments of AdvancedFilters @www.esoui.com:\n https://bit.ly/2IlJ56J")
+    d("1) What did you do?\n2)Where did you do it?\n3)Did you test if the error happenes with only the addon AdvancedFilters UPDATED activated (please test this!)?\n4)If error happens with other addons active: Which other addons were you using as the error happened?")
     if chatOutputVars ~= "" then
         d("-> " .. chatOutputVars)
     end
@@ -243,9 +260,36 @@ local function InitializeHooks()
         --Error handling: Hiding old subfilter bar
         -- e.g. for missing variables, or if other addons might have changed the currentFilter or currentInventoryType (indirectly by their stuff -> loadtime was increased -> filter change did not happen in time for AF due to this)
         local doDebugOutput = AF.settings.doDebugOutput
-        if doDebugOutput and (AF.currentInventoryType == nil or AF.subfilterGroups[AF.currentInventoryType] == nil or currentFilter == nil or craftingType == nil) then
-            if currentFilter == nil or (currentFilter ~= nil and AF.subFiltersBarInactive[currentFilter] == nil) then
-                showChatDebug("ShowSubfilterBar", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter))
+        local subfilterGroupMissingForInvType = false
+        local subfilterBarMissing = false
+        if doDebugOutput then
+            local showErrorInChat = false
+            if AF.currentInventoryType == nil then
+                showErrorInChat = true
+            end
+            if AF.subfilterGroups[AF.currentInventoryType] == nil then
+                showErrorInChat = true
+                subfilterGroupMissingForInvType = true
+            end
+            if currentFilter == nil then
+                showErrorInChat = true
+            else
+                if AF.subFiltersBarInactive[currentFilter] == nil then
+                    showErrorInChat = true
+                end
+            end
+            if craftingType == nil then
+                showErrorInChat = true
+            end
+            if AF.currentInventoryType ~= nil and craftingType ~= nil and currentFilter ~= nil then
+                local nextSubfilterBar = AF.subfilterGroups[AF.currentInventoryType][craftingType][currentFilter]
+                if nextSubfilterBar == nil then
+                    subfilterBarMissing = true
+                end
+            end
+            --Show a debug message now and abort here?
+            if showErrorInChat then
+                showChatDebug("ShowSubfilterBar", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
             end
             return false
         end
