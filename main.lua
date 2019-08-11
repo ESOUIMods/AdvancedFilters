@@ -1,8 +1,65 @@
 --Version 1.5.1.3---
 --Updated FR.lua tranbslation file (thanks to lexo1000)
---ToDo: 28.03.2019
---1. Support transmutation stations (still buggy together with FCOCraftFilter e.g.)
---2. Fix shown itemcount in imnventories after using Votan's Search Box search
+--ToDo: 09.08.2019
+--1. Error message on PTS if openeing the Enchanting table:
+--[[
+user:/AddOns/AdvancedFilters/main.lua:213: attempt to index a nil value
+stack traceback:
+user:/AddOns/AdvancedFilters/main.lua:213: in function 'ShowSubfilterBar'
+|caaaaaa<Locals> craftingType = 3, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:165, doDebugOutput = false, subfilterGroup = tbl </Locals>|r
+user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
+]]
+
+--2. Error message upon doing something at crafting station (User: Phuein)
+--[[
+https://imgur.com/7btGZff
+]]
+
+--3. Error message upon loading of the game on live (User: darkedone02)
+--Got this error when I launched.
+--[[
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: attempt to index a nil value
+stack traceback:
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: in function 'AF_FilterBar:Initialize'
+|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, _ = true, _ = 9, _ = ud, _ = 9, _ = 0, offsetY = 63, parents = tbl, parent = ud </Locals>|r
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:9: in function 'AF_FilterBar:New'
+|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, obj = tbl </Locals>|r
+user:/AddOns/AdvancedFilters/AF_FilterBar.lua:364: in function 'AF.CreateSubfilterBars'
+|caaaaaa<Locals> doDebugOutput = false, inventoryNames = tbl, tradeSkillNames = tbl, filterTypeNames = tbl, subfilterGroups = tbl, subfilterButtonNames = tbl, inventoryType = 16, tradeSkillTypeSubFilterGroup = tbl, tradeSkillType = 1, subfilterGroup = tbl, itemFilterType = 0, _ = tbl </Locals>|r
+user:/AddOns/AdvancedFilters/main.lua:890: in function 'AdvancedFilters_Loaded'
+|caaaaaa<Locals> eventCode = 65536, addonName = "AdvancedFilters" </Locals>|r
+]]
+
+--4. Item "" is not showing on PTS below  (User: Thallassa)
+--[[
+Hi Baertram,
+
+I tried version 1.5.17 on the pts and while I got no errors, the new summerset master furnisher's documents are hidden even
+when I'm on the "all" tab. In fact advanced filters says that my Inventory space is at 170/200 but only 165 items are shown.
+I'm not actually sure what the other two hidden items are (I only had 3 of the documents).
+I didn't check if the clockwork city documents are hidden as I am not eligible to buy them.
+
+They're on Faustina Curio, who stands next to the writ turn-ins in mournhold, elden root, and wayrest. You need master writ vouchers to buy them.
+]]
+
+--6. Guild store sell tab showas subcategories enabled where there are no items in there to sell (maybe bound items exist, or stolen ones)
+
+
+--______________________________________________________________________________________________________________________
+--                                                  FIXED
+--______________________________________________________________________________________________________________________
+--Fixed 2019-08-09, AF 1.5.1.8
+--5. Error upon opening vendor BUY panel
+--[[
+user:/AddOns/AdvancedFilters/main.lua:218: function expected instead of nil
+stack traceback:
+user:/AddOns/AdvancedFilters/main.lua:218: in function 'UpdateListAnchors'
+|caaaaaa<Locals> self = tbl, shiftY = 40, layoutData = tbl, list = ud </Locals>|r
+user:/AddOns/AdvancedFilters/main.lua:277: in function 'ShowSubfilterBar'
+|caaaaaa<Locals> currentFilter = 0, craftingType = 0, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:205, doDebugOutput = false, subfilterGroup = tbl, subfilterBar = tbl, isCraftingInventoryType = false </Locals>|r
+user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
+]]
+
 
 if AdvancedFilters == nil then AdvancedFilters = {} end
 local AF = AdvancedFilters
@@ -99,7 +156,7 @@ local function InitializeHooks()
     --Example: ENCHANTING creation & extraction, deconstruction/improvement for woodworking/blacksmithing/clothing & jewelry deconstruction/improvement
     --This function checks the inventory type and hides the old subfilterbar if needed.
     local function hideSubfilterBarSameParent(inventoryType)
---d("[AF]hideSubfilterBarSameParent - inventoryType: " .. inventoryType)
+        --d("[AF]hideSubfilterBarSameParent - inventoryType: " .. inventoryType)
         if not inventoryType then return end
         local mapInvTypeToInvTypeBefore = {
             --Enchanting
@@ -133,14 +190,14 @@ local function InitializeHooks()
         --CraftBag
         if AF.currentInventoryType == INVENTORY_CRAFT_BAG then
             local afCBCurrentFilter = AF.craftBagCurrentFilter
---d("[AF]ShowSubfilterBar craftbag, currentFilter: " .. tostring(currentFilter) .. ", afCBCurrentFilter: " .. tostring(afCBCurrentFilter))
+            --d("[AF]ShowSubfilterBar craftbag, currentFilter: " .. tostring(currentFilter) .. ", afCBCurrentFilter: " .. tostring(afCBCurrentFilter))
             if afCBCurrentFilter and afCBCurrentFilter ~= ITEMFILTERTYPE_ALL and afCBCurrentFilter == currentFilter then
                 --Set prevention variable for function ShowSubfilterBar at the craftbag.
 
                 --Check if the currentFilter variable changed to 0 () now (Which happens if we opened the guild store after the craftbagm and reopening the craftbag now.
                 --See issue 7 at AdvancedFilters github:  https://github.com/Randactyl/AdvancedFilters/issues/7
                 local currentCBFilter = PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter
---d(">currentCBFilter: " .. tostring(currentCBFilter))
+                --d(">currentCBFilter: " .. tostring(currentCBFilter))
                 if currentCBFilter == ITEMFILTERTYPE_ALL then
                     --The currentfilter reset, so we need to set it to the last known value again now
                     PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter = afCBCurrentFilter
@@ -149,22 +206,23 @@ local function InitializeHooks()
             end
         end
         if craftingType == nil then craftingType = GetCraftingType() end
---d("[AF]]ShowSubfilterBar - currentFilter: " .. tostring(currentFilter) .. ", craftingType: " .. tostring(craftingType) .. ", invType: " .. tostring(AF.currentInventoryType))
-    --[[
-        --Guild store?
-        if currentFilter == ITEMFILTERTYPE_TRADING_HOUSE then
-d(">GuildStore itemfiltertype found!")
-            --Set the "block inventory filter prehook" variable
-            AF.blockOnInventoryFilterChangedPreHookForCraftBag = true
-        else
-d(">NO GuildStore itemfiltertype found!")
-            AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
-        end
-    ]]
+        --d("[AF]]ShowSubfilterBar - currentFilter: " .. tostring(currentFilter) .. ", craftingType: " .. tostring(craftingType) .. ", invType: " .. tostring(AF.currentInventoryType))
+        --[[
+            --Guild store?
+            if currentFilter == ITEMFILTERTYPE_TRADING_HOUSE then
+    d(">GuildStore itemfiltertype found!")
+                --Set the "block inventory filter prehook" variable
+                AF.blockOnInventoryFilterChangedPreHookForCraftBag = true
+            else
+    d(">NO GuildStore itemfiltertype found!")
+                AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
+            end
+        ]]
         --Update the y offsetts in pixels for the subfilter bar, so it is shown below the parent's filter buttons
         local function UpdateListAnchors(self, shiftY)
---d(">UpdateListAnchors - shiftY: " .. tostring(shiftY))
+            --d(">UpdateListAnchors - shiftY: " .. tostring(shiftY))
             if self == nil then return end
+            AF._self = self
             local layoutData = self.appliedLayout or BACKPACK_DEFAULT_LAYOUT_FRAGMENT.layoutData
             if not layoutData then return end
             local list = self.list or self.inventories[AF.currentInventoryType].listView
@@ -175,7 +233,9 @@ d(">NO GuildStore itemfiltertype found!")
 
             ZO_ScrollList_SetHeight(list, list:GetHeight())
 
-            local sortBy = self.sortHeaders or self:GetDisplayInventoryTable(AF.currentInventoryType).sortHeaders
+            local sortBy = self.sortHeaders or self.sortHeaderGroup
+            if sortBy == nil and self.GetDisplayInventoryTable then sortBy = self:GetDisplayInventoryTable(AF.currentInventoryType).sortHeaders end
+            if sortBy == nil then return end
             sortBy = sortBy.headerContainer
             sortBy:ClearAnchors()
             sortBy:SetAnchor(TOPRIGHT, nil, TOPRIGHT, 0, layoutData.sortByOffsetY + shiftY)
@@ -200,12 +260,12 @@ d(">NO GuildStore itemfiltertype found!")
         hideSubfilterBarSameParent(AF.currentInventoryType)
         --Old subfilterbar(s) was(were) hidden, so check if a new one should be shown now
         if CheckIfNoSubfilterBarShouldBeShown(currentFilter) then
---d(">ABORT: CheckIfNoSubfilterBarShouldBeShown: true")
+            --d(">ABORT: CheckIfNoSubfilterBarShouldBeShown: true")
             return
         end
         --do nothing if we're in a guild store and regular filters are disabled.
         if not ZO_TradingHouse:IsHidden() and util.libCIF._guildStoreSellFiltersDisabled then
---d("[AF]Trading house libCIF:guildSToreSellFiltersDisabled!")
+            --d("[AF]Trading house libCIF:guildSToreSellFiltersDisabled!")
             return
         end
 
@@ -225,7 +285,7 @@ d(">NO GuildStore itemfiltertype found!")
             end
             --set current bar reference
             subfilterGroup.currentSubfilterBar = subfilterBar
---d(">subfilterBar exists, name: " .. tostring(subfilterBar.control:GetName()) .. ",  inventoryType: " ..tostring(subfilterBar.inventoryType))
+            --d(">subfilterBar exists, name: " .. tostring(subfilterBar.control:GetName()) .. ",  inventoryType: " ..tostring(subfilterBar.inventoryType))
             --Update the currentFilter to the current inventory
             UpdateCurrentFilter(subfilterBar.inventoryType, currentFilter, isCraftingInventoryType, craftingInv)
             --activate current subfilter bar's button
@@ -236,7 +296,7 @@ d(">NO GuildStore itemfiltertype found!")
             if subfilterBar.inventoryType == INVENTORY_TYPE_VENDOR_BUY then
                 UpdateListAnchors(STORE_WINDOW, subfilterBar.control:GetHeight())
             elseif isCraftingInventoryType then
---d("> UpdateListAnchors - Crafting")
+                --d("> UpdateListAnchors - Crafting")
                 UpdateListAnchors(craftingInv, subfilterBar.control:GetHeight())
             else
                 UpdateListAnchors(PLAYER_INVENTORY, subfilterBar.control:GetHeight())
@@ -299,16 +359,16 @@ d(">NO GuildStore itemfiltertype found!")
             PLAYER_INVENTORY.isListDirty = track(PLAYER_INVENTORY.isListDirty)
         end
 
-    --[[
-        local function onFragmentShown()
-        end
-    ]]
+        --[[
+            local function onFragmentShown()
+            end
+        ]]
         local function onFragmentHiding()
             PLAYER_INVENTORY.isListDirty = untrack(PLAYER_INVENTORY.isListDirty)
             --CraftBag
             if inventoryType == INVENTORY_CRAFT_BAG then
                 AF.craftBagCurrentFilter = PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter
---d("[AF]CraftBag fragment hiding, currentFilter: " .. tostring(AF.craftBagCurrentFilter))
+                --d("[AF]CraftBag fragment hiding, currentFilter: " .. tostring(AF.craftBagCurrentFilter))
             end
 
             --Reset the current inventory type to the normal inventory
@@ -318,7 +378,7 @@ d(">NO GuildStore itemfiltertype found!")
         local function onFragmentStateChange(oldState, newState)
             if newState == SCENE_FRAGMENT_SHOWING then
                 onFragmentShowing()
-            --elseif newState == SCENE_FRAGMENT_SHOWN then
+                --elseif newState == SCENE_FRAGMENT_SHOWN then
                 --onFragmentShown()
             elseif newState == SCENE_FRAGMENT_HIDING then
                 onFragmentHiding()
@@ -338,12 +398,12 @@ d(">NO GuildStore itemfiltertype found!")
     -->variables to the normal inventory, if you had the CraftBag opened last in the normal inventory.
     -->See github, issue 7:   https://github.com/Randactyl/AdvancedFilters/issues/7
     local function hookScene(scene, filterPanelId)
-            local function onSceneShowing()
-                --Retrait
-                if  filterPanelId == LF_RETRAIT then
-                    AF.currentInventoryType = LF_RETRAIT
-                end
+        local function onSceneShowing()
+            --Retrait
+            if  filterPanelId == LF_RETRAIT then
+                AF.currentInventoryType = LF_RETRAIT
             end
+        end
         --[[
             local function onSceneShown()
             end
@@ -351,14 +411,14 @@ d(">NO GuildStore itemfiltertype found!")
         local function onSceneHiding()
             if filterPanelId then
                 if      filterPanelId == LF_MAIL_SEND then
---d(">Mail send scene closing!")
+                    --d(">Mail send scene closing!")
                     --Set the "block inventory filter prehook" variable
                     AF.blockOnInventoryFilterChangedPreHookForCraftBag = true
                 elseif  filterPanelId == LF_GUILDSTORE_BROWSE or LF_GUILDSTORE_SELL then
---d(">GuildStore scene closing!")
+                    --d(">GuildStore scene closing!")
                     --Set the "block inventory filter prehook" variable
                     AF.blockOnInventoryFilterChangedPreHookForCraftBag = true
-                --Retrait
+                    --Retrait
                 elseif  filterPanelId == LF_RETRAIT then
                     --Reset inventory type to normal backpack
                     AF.currentInventoryType = INVENTORY_BACKPACK
@@ -369,7 +429,7 @@ d(">NO GuildStore itemfiltertype found!")
         local function onSceneStateChange(oldState, newState)
             if newState == SCENE_HIDING then
                 onSceneHiding()
-            --elseif newState == SCENE_SHOWN then
+                --elseif newState == SCENE_SHOWN then
                 --onSceneShown()
             elseif newState == SCENE_SHOWING then
                 onSceneShowing()
@@ -434,7 +494,7 @@ d(">NO GuildStore itemfiltertype found!")
 
     --ENCHANTING
     local function HookEnchantingSetEnchantingMode(self, mode)
---d("[AF]HookEnchantingSetEnchantingMode, mode: " .. tostring(mode))
+        --d("[AF]HookEnchantingSetEnchantingMode, mode: " .. tostring(mode))
         --if not IsCraftingPanelShown() then return false end
         --[[
             --Enchanting modes
@@ -451,9 +511,19 @@ d(">NO GuildStore itemfiltertype found!")
     end
     --ZO_PreHook(ZO_Enchanting, "SetEnchantingMode", HookEnchantingSetEnchantingMode)
     local origEnchantingSetEnchantMode = ZO_Enchanting.SetEnchantingMode
-    ZO_Enchanting.SetEnchantingMode = function(...)
-        origEnchantingSetEnchantMode(...)
-        HookEnchantingSetEnchantingMode(...)
+    if origEnchantingSetEnchantMode ~= nil then
+        ZO_Enchanting.SetEnchantingMode = function(...)
+            local retVar = origEnchantingSetEnchantMode(...)
+            HookEnchantingSetEnchantingMode(...)
+            return retVar
+        end
+    else
+        --ZO_Enchanting:SetEnchantingMode does not exist anymore (PTS -> Scalebreaker) and was replaced by ZO_Enchanting:OnModeUpdated()
+        origEnchantingSetEnchantMode = ZO_Enchanting.OnModeUpdated
+        ZO_Enchanting.OnModeUpdated = function(self, ...)
+            origEnchantingSetEnchantMode(self, ...)
+            HookEnchantingSetEnchantingMode(self, self.enchantingMode)
+        end
     end
 
     --Retrait
@@ -484,14 +554,14 @@ d(">NO GuildStore itemfiltertype found!")
     local function ChangeFilterInventory(self, filterTab)
         --CraftBag
         if AF.currentInventoryType == INVENTORY_CRAFT_BAG and AF.blockOnInventoryFilterChangedPreHookForCraftBag then
---d("[AF]PLAYER_INVENTORY:ChangeFilter, CraftBag: PreHook is blocked. ABORT!")
+            --d("[AF]PLAYER_INVENTORY:ChangeFilter, CraftBag: PreHook is blocked. ABORT!")
             AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
             return false
         end
---AF.filterTab = filterTab
+        --AF.filterTab = filterTab
         local tabInvType = filterTab.inventoryType
         local currentFilter = self:GetTabFilterInfo(tabInvType, filterTab)
---d("[AF]PLAYER_INVENTORY:ChangeFilter, tabInvType: " ..tostring(tabInvType) .. ", curInvType: " .. tostring(AF.currentInventoryType) .. ", currentFilter: " .. tostring(currentFilter))
+        --d("[AF]PLAYER_INVENTORY:ChangeFilter, tabInvType: " ..tostring(tabInvType) .. ", curInvType: " .. tostring(AF.currentInventoryType) .. ", currentFilter: " .. tostring(currentFilter))
         if AF.currentInventoryType ~= INVENTORY_TYPE_VENDOR_BUY then
             ThrottledUpdate("ShowSubfilterBar" .. AF.currentInventoryType, 10, ShowSubfilterBar, currentFilter)
         end
@@ -545,10 +615,10 @@ d(">NO GuildStore itemfiltertype found!")
             local craftingType = GetCraftingType()
             local filter = self.filterType or self.typeFilter
             local currentFilter = util.MapCraftingStationFilterType2ItemFilterType(filter, invType, craftingType)
-    --d("[AF]ChangeFilterCrafting, invType: " .. tostring(invType) .. ", craftingType: " .. tostring(craftingType) .. ", filterType: " ..  tostring(filter) .. ", currentFilter: " .. tostring(currentFilter))
+            --d("[AF]ChangeFilterCrafting, invType: " .. tostring(invType) .. ", craftingType: " .. tostring(craftingType) .. ", filterType: " ..  tostring(filter) .. ", currentFilter: " .. tostring(currentFilter))
 
             ThrottledUpdate("ShowSubfilterBar" .. invType .. "_" .. craftingType, 10,
-                ShowSubfilterBar, currentFilter, craftingType)
+                    ShowSubfilterBar, currentFilter, craftingType)
 
             local subfilterGroup = AF.subfilterGroups[invType]
             if not subfilterGroup then return end
@@ -556,7 +626,7 @@ d(">NO GuildStore itemfiltertype found!")
                 local currentSubfilterBar = subfilterGroup.currentSubfilterBar
                 if not currentSubfilterBar then return end
                 ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
-                    RefreshSubfilterBar, currentSubfilterBar)
+                        RefreshSubfilterBar, currentSubfilterBar)
             end, 50)
         end, 10) -- called with small delay, otherwise self.filterType is nil
     end
@@ -572,17 +642,17 @@ d(">NO GuildStore itemfiltertype found!")
             local invType = AF.currentInventoryType
             local craftingType = GetCraftingType()
             local currentFilter = util.MapCraftingStationFilterType2ItemFilterType(self.owner.enchantingMode, invType, craftingType)
---d("[AF]ChangeFilterEnchanting - currentFilter: " ..tostring(currentFilter) .. ", currentInventoryType: " .. tostring(invType) .. ", craftingType: " ..tostring(craftingType))
+            --d("[AF]ChangeFilterEnchanting - currentFilter: " ..tostring(currentFilter) .. ", currentInventoryType: " .. tostring(invType) .. ", craftingType: " ..tostring(craftingType))
             --Only show subfilters at the enchanting extraction panel
             ThrottledUpdate("ShowSubfilterBar" .. invType .. "_" .. craftingType, 10,
-                ShowSubfilterBar, currentFilter, craftingType)
+                    ShowSubfilterBar, currentFilter, craftingType)
             zo_callLater(function()
                 local subfilterGroup = AF.subfilterGroups[invType]
                 if not subfilterGroup then return end
                 local currentSubfilterBar = subfilterGroup.currentSubfilterBar
                 if not currentSubfilterBar then return end
                 ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
-                    RefreshSubfilterBar, currentSubfilterBar)
+                        RefreshSubfilterBar, currentSubfilterBar)
             end, 50)
         end, 10) -- called with small delay, otherwise self.filterType is nil
     end
@@ -592,7 +662,7 @@ d(">NO GuildStore itemfiltertype found!")
     local function hookInventoryInfoBar()
         --Overwrite the update function for the free slots label in inventories
         function ZO_InventoryManager:UpdateFreeSlots(inventoryType)
---d("[AF]ZO_InventoryManager:UpdateFreeSlots, inventoryType: " ..tostring(inventoryType))
+            --d("[AF]ZO_InventoryManager:UpdateFreeSlots, inventoryType: " ..tostring(inventoryType))
             local inventory = self.inventories[inventoryType]
             local freeSlotType
             local altFreeSlotType
@@ -707,7 +777,7 @@ d(">NO GuildStore itemfiltertype found!")
         --Overwrite the function UpdateInventorySlots from esoui/esoui/ingame/inventory/inventorytemplates.lua
         --for the crafting stations, in order to update the filter count amount properly in the infoBars
         function UpdateInventorySlots(infoBar)
---d(">>>>[AF]UpdateInventorySlots: " .. tostring(infoBar:GetName()))
+            --d(">>>>[AF]UpdateInventorySlots: " .. tostring(infoBar:GetName()))
             --Only for crafting station inventory types as the others are managed within function ZO_InventoryManager:UpdateFreeSlots(inventoryType) above!
             local invType = AF.currentInventoryType
             local isCraftingInvType = IsCraftingStationInventoryType(invType)
@@ -719,7 +789,7 @@ d(">NO GuildStore itemfiltertype found!")
             local numUsedSlots, numSlots = PLAYER_INVENTORY:GetNumSlots(INVENTORY_BACKPACK)
             local numFilteredAndShownItems = util.getInvItemCount(invType, isCraftingInvType)
             local freeSlotsShown = ((numFilteredAndShownItems > 0) and numFilteredAndShownItems) or 0
---d(">numUsedSlots: " .. tostring(numUsedSlots) .. ", numSlots: " .. tostring(numSlots) .. ", numFilteredAndShownItems: " .. tostring(numFilteredAndShownItems) ..", freeSlotsShown: " ..tostring(freeSlotsShown))
+            --d(">numUsedSlots: " .. tostring(numUsedSlots) .. ", numSlots: " .. tostring(numSlots) .. ", numFilteredAndShownItems: " .. tostring(numFilteredAndShownItems) ..", freeSlotsShown: " ..tostring(freeSlotsShown))
             local freeSlotText = ""
             if numUsedSlots < numSlots then
                 freeSlotText = zo_strformat(SI_INVENTORY_BACKPACK_REMAINING_SPACES, numUsedSlots, numSlots)
@@ -733,10 +803,10 @@ d(">NO GuildStore itemfiltertype found!")
                 local colorStringColorDef = ZO_ColorDef:New(itemCountLabelColor["r"], itemCountLabelColor["g"], itemCountLabelColor["b"], itemCountLabelColor["a"])
                 colorString = colorStringColorDef:Colorize(colorString .. "(" .. freeSlotsShown .. ")")
                 newFreeSlotText = zo_strformat("<<1>> <<2>>", freeSlotText, colorString)
---d(">>1- newFreeSlotText: " .. tostring(newFreeSlotText))
+                --d(">>1- newFreeSlotText: " .. tostring(newFreeSlotText))
             else
                 newFreeSlotText = freeSlotText
---d(">>2- newFreeSlotText: " .. tostring(newFreeSlotText))
+                --d(">>2- newFreeSlotText: " .. tostring(newFreeSlotText))
             end
             slotsLabel:SetText(newFreeSlotText)
         end
@@ -777,11 +847,11 @@ d(">NO GuildStore itemfiltertype found!")
                 goOn = true
             end
             if not goOn then return false end
---d("[AF]UpdateEmptyBagLabel, isEmptyList: " ..tostring(isEmptyList))
+            --d("[AF]UpdateEmptyBagLabel, isEmptyList: " ..tostring(isEmptyList))
             --Update the count of filtered/shown items in the inventory FreeSlot label
             --Delay this function call as the data needs to be filtered first!
             ThrottledUpdate("RefreshItemCount_" .. inventoryType,
-                250, util.updateInventoryInfoBarCountLabel, inventoryType)
+                    250, util.updateInventoryInfoBarCountLabel, inventoryType)
         end
         return false
     end)
