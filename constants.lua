@@ -35,9 +35,10 @@ if not util.LibMotifCategories then d("[AdvancedFilters]ERROR: Needed library Li
 
 --Scene names for the SCENE_MANAGER.currentScene.name check
 local scenesForChecks = {
-    storeVendor = "store",
-    bank        = "bank",
-    guildBank   = "guildBank",
+    storeVendor     = "store",
+    bank            = "bank",
+    guildBank       = "guildBank",
+    guildStoreSell  = "tradinghouse",
 }
 AF.scenesForChecks = scenesForChecks
 
@@ -58,6 +59,7 @@ local controlsForChecks = {
     craftBag                = ZO_CraftBag,
     houseBank               = ZO_HouseBank,
     retraitControl          = ZO_RETRAIT_STATION_KEYBOARD.retraitPanel.control, --needed for the filterBar parent control
+    guildStoreSellBackpack  = ZO_PlayerInventory,
     --Keyboard variables
     store                   = STORE_WINDOW,
     smithing                = SMITHING,

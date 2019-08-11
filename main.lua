@@ -1,40 +1,10 @@
---ToDo: 09.08.2019
---4. Item "" is not showing on PTS below  (User: Thallassa)
---[[
-Hi Baertram,
-
-I tried version 1.5.17 on the pts and while I got no errors, the new summerset master furnisher's documents are hidden even
-when I'm on the "all" tab. In fact advanced filters says that my Inventory space is at 170/200 but only 165 items are shown.
-I'm not actually sure what the other two hidden items are (I only had 3 of the documents).
-I didn't check if the clockwork city documents are hidden as I am not eligible to buy them.
-
-They're on Faustina Curio, who stands next to the writ turn-ins in mournhold, elden root, and wayrest. You need master writ vouchers to buy them.
---Itemlink: |H1:item:153621:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
---itemType: 18 ITEMFILTERTYPE_PROVISIONING, specializedItemType: 850 SPECIALIZED_ITEMTYPE_CONTAINER
-
--->Bugfix idea:
-Added to subfilter consumables->Container = {
-            filterCallback = function() return GetFilterCallbackForSpecializedItemtype({SPECIALIZED_ITEMTYPE_CONTAINER}) or GetFilterCallback({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY}) end,
-]]
-
---6. Guild store sell tab showas subcategories enabled where there are no items in there to sell (maybe bound items exist, or stolen ones)
-
+--ToDo: 11.08.2019
+--Max bugs: #7
 
 --______________________________________________________________________________________________________________________
 --                                                  FIXED
 --______________________________________________________________________________________________________________________
 --Fixed 2019-08-09, AF 1.5.1.8
---5. Error upon opening vendor BUY panel
---[[
-user:/AddOns/AdvancedFilters/main.lua:218: function expected instead of nil
-stack traceback:
-user:/AddOns/AdvancedFilters/main.lua:218: in function 'UpdateListAnchors'
-|caaaaaa<Locals> self = tbl, shiftY = 40, layoutData = tbl, list = ud </Locals>|r
-user:/AddOns/AdvancedFilters/main.lua:277: in function 'ShowSubfilterBar'
-|caaaaaa<Locals> currentFilter = 0, craftingType = 0, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:205, doDebugOutput = false, subfilterGroup = tbl, subfilterBar = tbl, isCraftingInventoryType = false </Locals>|r
-user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
-]]
-
 --3. Error message upon loading of the game on live (User: darkedone02)
 --Got this error when I launched.
 --[[
@@ -49,6 +19,24 @@ user:/AddOns/AdvancedFilters/AF_FilterBar.lua:364: in function 'AF.CreateSubfilt
 user:/AddOns/AdvancedFilters/main.lua:890: in function 'AdvancedFilters_Loaded'
 |caaaaaa<Locals> eventCode = 65536, addonName = "AdvancedFilters" </Locals>|r
 ]]
+
+--Fixed 2019-08-09, AF 1.5.1.8
+--5. Error upon opening vendor BUY panel
+--[[
+user:/AddOns/AdvancedFilters/main.lua:218: function expected instead of nil
+stack traceback:
+user:/AddOns/AdvancedFilters/main.lua:218: in function 'UpdateListAnchors'
+|caaaaaa<Locals> self = tbl, shiftY = 40, layoutData = tbl, list = ud </Locals>|r
+user:/AddOns/AdvancedFilters/main.lua:277: in function 'ShowSubfilterBar'
+|caaaaaa<Locals> currentFilter = 0, craftingType = 0, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:205, doDebugOutput = false, subfilterGroup = tbl, subfilterBar = tbl, isCraftingInventoryType = false </Locals>|r
+user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
+]]
+
+--Fixed 2019-08-09, AF 1.5.1.8
+--6. Guild store sell tab shows subcategories enabled where there are no items in there to sell (maybe bound items exist, or stolen ones)
+
+--Fixed 2019-08-09, AF 1.5.1.8
+--#7. Junk in inventory: "jewelry" will show as armor AND jewelry, but should only be shown below jewelry
 
 --______________________________________________________________________________________________________________________
 --                                                  NOT REPLICABLE
@@ -74,6 +62,26 @@ user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
 
 https://imgur.com/7btGZff
 user:/AddOns/AdvancedFilters/main.lua:213 attempt o index a nil value, craftingType = 1
+]]
+
+--Not replicable 2019-08-11
+-->Missing achievement and/or writ vouchers
+--4. Item "|H1:item:153621:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h" is not showing on PTS below "All" tab  (User: Thallassa)
+--[[
+Hi Baertram,
+
+I tried version 1.5.17 on the pts and while I got no errors, the new summerset master furnisher's documents are hidden even
+when I'm on the "all" tab. In fact advanced filters says that my Inventory space is at 170/200 but only 165 items are shown.
+I'm not actually sure what the other two hidden items are (I only had 3 of the documents).
+I didn't check if the clockwork city documents are hidden as I am not eligible to buy them.
+
+They're on Faustina Curio, who stands next to the writ turn-ins in mournhold, elden root, and wayrest. You need master writ vouchers to buy them.
+--Itemlink: |H1:item:153621:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
+--itemType: 18 ITEMFILTERTYPE_PROVISIONING, specializedItemType: 850 SPECIALIZED_ITEMTYPE_CONTAINER
+
+-->Bugfix idea:
+Added to subfilter consumables->Container = {
+            filterCallback = function() return GetFilterCallbackForSpecializedItemtype({SPECIALIZED_ITEMTYPE_CONTAINER}) or GetFilterCallback({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY}) end,
 ]]
 
 
