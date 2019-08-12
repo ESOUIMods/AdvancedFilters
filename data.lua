@@ -48,6 +48,7 @@ local function GetFilterCallbackForWeaponType(filterTypes, checkOnlyJunk)
                 return true
             end
         end
+        return false
     end
 end
 
@@ -61,6 +62,7 @@ local function GetFilterCallbackForArmorType(filterTypes, checkOnlyJunk)
         for i=1, #filterTypes do
             if(filterTypes[i] == armorType) then return true end
         end
+        return false
     end
 end
 
@@ -106,6 +108,7 @@ local function GetFilterCallbackForJewelry(filterTypes, itemTraitType, checkOnly
                 if itemTraitType == checkItemTraitType then return true end
             end
         end
+        return false
     end
 end
 
@@ -125,6 +128,7 @@ local function GetFilterCallbackForClothing(checkOnlyJunk)
            and (equipType ~= EQUIP_TYPE_INVALID)) then
             return true
         end
+        return false
     end
 end
 
@@ -141,6 +145,7 @@ local function GetFilterCallbackForTrophy(checkOnlyJunk)
           or itemType == ITEMTYPE_TREASURE) then
             return true
         end
+        return false
     end
 end
 
@@ -158,6 +163,7 @@ local function GetFilterCallbackForFence(checkOnlyJunk)
           or itemType == ITEMTYPE_TOOL or itemType == ITEMTYPE_TRASH) then
             return true
         end
+        return false
     end
 end
 
@@ -306,6 +312,30 @@ local function GetFilterCallbackForStyleMaterial(categoryConst, checkOnlyJunk)
         if categoryConst == AF.util.LibMotifCategories:GetMotifCategory(itemLink) then
             return true
         end
+        return false
+    end
+end
+
+local function GetFilterCallbackForItemTypeAndSpecializedItemtype(sItemTypes, sSpecializedItemTypes, checkOnlyJunk)
+    checkOnlyJunk = checkOnlyJunk or false
+
+    return function(slot, slotIndex)
+        slot = checkCraftingStationSlot(slot, slotIndex)
+        if(not sItemTypes and not sSpecializedItemTypes) then return checkNoFilterTypesOrIsJunk(slot, checkOnlyJunk) end
+        if checkOnlyJunk then if not checkNoFilterTypesOrIsJunk(slot, true) then return false end end
+        local itemLink = util.GetItemLink(slot)
+        local itemType, specializedItemType = GetItemLinkItemType(itemLink)
+
+        for i = 1, #sItemTypes do
+            if sItemTypes[i] == itemType then
+                for j = 1, #sSpecializedItemTypes do
+                    if sSpecializedItemTypes[j] == specializedItemType then
+                        return true
+                    end
+                end
+            end
+        end
+        return false
     end
 end
 
@@ -329,6 +359,7 @@ local function GetFilterCallbackForSpecializedItemtype(sItemTypes, checkOnlyJunk
                 end
             end
         end
+        return false
     end
 end
 
@@ -343,6 +374,7 @@ local function GetFilterCallback(filterTypes, checkOnlyJunk)
         for i=1, #filterTypes do
             if filterTypes[i] == itemType then return true end
         end
+        return false
     end
 end
 
@@ -642,7 +674,7 @@ AF.subfilterCallbacks = {
             dropdownCallbacks = {},
         },
         Container = {
-            filterCallback = GetFilterCallback({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY}),
+            filterCallback = GetFilterCallbackForItemTypeAndSpecializedItemtype({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY, ITEMFILTERTYPE_PROVISIONING}, {SPECIALIZED_ITEMTYPE_CONTAINER}),
             dropdownCallbacks = {},
         },
         Repair = {
@@ -856,7 +888,7 @@ AF.subfilterCallbacks = {
             },
         },
         Armor = {
-            filterCallback = GetFilterCallback({ITEMTYPE_ARMOR}, true),
+            filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_HEAD, EQUIP_TYPE_CHEST, EQUIP_TYPE_SHOULDERS, EQUIP_TYPE_HAND, EQUIP_TYPE_WAIST, EQUIP_TYPE_LEGS, EQUIP_TYPE_FEET}, nil, true),
             dropdownCallbacks = {
                 {name = "Heavy", showIcon=true, filterCallback = GetFilterCallbackForArmorType({ARMORTYPE_HEAVY}, true)},
                 {name = "Medium", showIcon=true, filterCallback = GetFilterCallbackForArmorType({ARMORTYPE_MEDIUM}, true)},

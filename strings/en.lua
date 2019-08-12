@@ -1,7 +1,7 @@
 local util = AdvancedFilters.util
 local strings = {
     --SHARED
-    All = "All",
+    All = util.Localize(SI_ITEMFILTERTYPE0),
     Trophy = util.Localize(SI_ITEMTYPE5),
     TreasureMaps = util.Localize(SI_SPECIALIZEDITEMTYPE100),
     SurveyReport = util.Localize(SI_SPECIALIZEDITEMTYPE101),
@@ -132,7 +132,7 @@ local strings = {
 
     --DROPDOWN CONTEXT MENU
     ResetToAll = "Reset to \'All\'",
-    InvertDropdownFilter = "Invert dropdown filter",
+    InvertDropdownFilter = "Invert filter: %s",
 
     --LibMotifCategories
     NormalStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_NORMAL),

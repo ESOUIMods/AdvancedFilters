@@ -196,6 +196,7 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
     local isGuildBankDepositPanel       = AF.guildBankOpened  and util.IsFilterPanelShown(LF_GUILDBANK_DEPOSIT) or false
     local isHouseBankDepositPanel       = AF.houseBankOpened  and util.IsFilterPanelShown(LF_HOUSE_BANK_DEPOSIT) or false
     local isABankDepositPanel           = (isBankDepositPanel or isGuildBankDepositPanel or isHouseBankDepositPanel) or false
+    local isGuildStoreSellPanel         = util.IsFilterPanelShown(LF_GUILDSTORE_SELL) or false
     local isRetraitStation              = util.IsRetraitPanelShown()
     local isJunkInvButtonActive         = subfilterBar.name == (AF.inventoryNames[INVENTORY_BACKPACK] .. "_" .. AF.filterTypeNames[ITEMFILTERTYPE_JUNK]) or false
     local libFiltersPanelId             = util.GetCurrentFilterTypeForInventory(inventoryType)
@@ -227,6 +228,8 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
             local isItemStolen = false
             local isItemJunk = false
             local isItemBankAble = true
+            local isBOPTradeable = false
+            local isBound = false
             local passesCallback
             local passesFilter
             if isNoCrafting then
@@ -279,8 +282,13 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
                     isItemJunk = IsItemJunk(itemData.bagId, itemData.slotIndex)
                 end
                 --Check if item is stolen (crafting or banks)
-                if isABankDepositPanel or isVendorPanel or not isNoCrafting then
+                if isABankDepositPanel or isVendorPanel or not isNoCrafting or isGuildStoreSellPanel then
                     isItemStolen = IsItemStolen(itemData.bagId, itemData.slotIndex)
+                end
+                --Checks for bound and BOP tradeable
+                if isGuildBankDepositPanel or isGuildStoreSellPanel then
+                    isBound         = IsItemBound(itemData.bagId, itemData.slotIndex)
+                    isBOPTradeable  = IsItemBoPAndTradeable(itemData.bagId, itemData.slotIndex)
                 end
                 --Is an item below a subfilter but cannot be deposit/sold (bank, guild bank, vendor):
                 --The subfilter button will be still enabled as there are no items to check (will be filtered by ESO vanilla UI BEFORE AF can check them)
@@ -293,7 +301,7 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
                     --Stolen items
                     --Bound items
                     --Bound but tradeable items
-                    isItemBankAble = not IsItemBound(itemData.bagId, itemData.slotIndex) and not IsItemBoPAndTradeable(itemData.bagId, itemData.slotIndex)
+                    isItemBankAble = not isBound and not isBOPTradeable
                 end
                 ----------------------------------------------------------------------------------------
                 --[No crafting panel] (e.g. inventory, bank, guild bank, mail, trade, craftbag):
@@ -318,6 +326,14 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
                     elseif isVendorPanel then
                         doEnableSubFilterButtonAgain = not isItemStolen and (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
 
+                        --[Guild store list/sell]
+                        --Item is:
+                        -->Not stolen
+                        -->not junk
+                        -->not bound
+                    elseif isGuildStoreSellPanel then
+                        doEnableSubFilterButtonAgain = not isItemStolen and not isItemJunk and not isBound and not isBOPTradeable
+
                         --[Normal inventory, mail, trade, craftbag]
                         --Item is:
                         -->not junk
@@ -325,10 +341,10 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
                     else
                         doEnableSubFilterButtonAgain = (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
                     end
-                    ----------------------------------------------------------------------------------------
-                    --[Crafting panel] (e.g. refine, creation, deconstruction, improvement, research, recipes, extraction, retrait):
-                    --Item is:
-                    -->Not stolen (currently deactivated!)
+                        ----------------------------------------------------------------------------------------
+                        --[Crafting panel] (e.g. refine, creation, deconstruction, improvement, research, recipes, extraction, retrait):
+                        --Item is:
+                        -->Not stolen (currently deactivated!)
                 else
 --if isRetraitStation and button.name == "Shield" then
 --d(">" .. GetItemLink(itemData.bagId, itemData.slotIndex) .. " passesCallback: " ..tostring(passesCallback) .. ", otherAddonUsesFilters: " .. tostring(otherAddonUsesFilters) .. ", passesFilter: " ..tostring(passesFilter) .. ", canBeRetraited: " .. tostring(CanItemBeRetraited(itemData.bagId, itemData.slotIndex)) .. " - doEnableSubFilterButtonAgain: " ..tostring(doEnableSubFilterButtonAgain))
@@ -1206,10 +1222,12 @@ function util.IsFilterPanelShown(libFiltersFilterPanelId)
     local controlVendorRepair = controlsForChecks.repairWindow
     local controlBankDeposit = controlsForChecks.bankBackpack
     local controlGuildBankDeposit = controlsForChecks.guildBankBackpack
+    local controlGuildStoreSell = controlsForChecks.guildStoreSellBackpack
     local scenesForChecks = AF.scenesForChecks
-    local sceneNameStoreVendor = AF.scenesForChecks.storeVendor
-    local sceneNameBankDeposit = AF.scenesForChecks.bank
-    local sceneNameGuildBankDeposit = AF.scenesForChecks.guildBank
+    local sceneNameStoreVendor = scenesForChecks.storeVendor
+    local sceneNameBankDeposit = scenesForChecks.bank
+    local sceneNameGuildBankDeposit = scenesForChecks.guildBank
+    local sceneNameGuildStoreSell = scenesForChecks.guildStoreSell
     local filterPanelId2TrueControl = {
         [LF_VENDOR_BUY]         = function() return not controlVendorBuy:IsHidden() and controlInventory:IsHidden() and controlVendorBuyback:IsHidden() and controlVendorRepair:IsHidden() or false end,
         [LF_VENDOR_SELL]        = function() return controlVendorBuy:IsHidden() and not controlInventory:IsHidden() and controlVendorBuyback:IsHidden() and controlVendorRepair:IsHidden() or false end,
@@ -1218,6 +1236,7 @@ function util.IsFilterPanelShown(libFiltersFilterPanelId)
         [LF_BANK_DEPOSIT]       = controlInventory,
         [LF_GUILDBANK_DEPOSIT]  = controlInventory,
         [LF_HOUSE_BANK_DEPOSIT] = controlInventory,
+        [LF_GUILDSTORE_SELL]    = controlGuildStoreSell,
     }
     local filterPanelId2FalseControl = {
         [LF_BANK_DEPOSIT]       = controlBankDeposit,
@@ -1232,6 +1251,7 @@ function util.IsFilterPanelShown(libFiltersFilterPanelId)
         [LF_BANK_DEPOSIT]       = sceneNameBankDeposit,
         [LF_GUILDBANK_DEPOSIT]  = sceneNameGuildBankDeposit,
         [LF_HOUSE_BANK_DEPOSIT] = sceneNameBankDeposit,
+        [LF_GUILDSTORE_SELL]    = sceneNameGuildStoreSell,
     }
     local goOn = true
     local trueSceneName = filterPanelId2SceneName[libFiltersFilterPanelId] or nil
