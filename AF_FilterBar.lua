@@ -120,6 +120,19 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
     self.dropdown:SetHandler("OnMouseUp", DropdownOnMouseUpHandler)
 
     local comboBox = self.dropdown.m_comboBox
+
+    local function DropdownOnMouseEnterHandler()
+        local tooltipText = comboBox.m_selectedItemText:GetText()
+        if tooltipText and string.len(tooltipText) > 12 then
+            ZO_Tooltips_ShowTextTooltip(self.dropdown, LEFT, tooltipText)
+        end
+    end
+    self.dropdown:SetHandler("OnMouseEnter", DropdownOnMouseEnterHandler)
+    local function DropdownOnMouseExitHandler()
+        ZO_Tooltips_HideTextTooltip()
+    end
+    self.dropdown:SetHandler("OnMouseExit", DropdownOnMouseExitHandler)
+
     comboBox:SetSortsItems(false)
     comboBox.AddMenuItems = function(comboBox)
         local button = self:GetCurrentButton()

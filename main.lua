@@ -1,8 +1,5 @@
 --ToDo: 11.08.2019
---Max bugs: #8
-
---#8: In dropdown box context menu show "Invert filter: " and the current filter name behind
---#9: In dropdown box context menu show, after "Invert filter: %s" was applied, the name of the filter with a -! in front so one can directly see it is inverted
+--Max bugs: #9
 
 --______________________________________________________________________________________________________________________
 --                                                  FIXED
@@ -40,6 +37,9 @@ user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
 
 --Fixed 2019-08-09, AF 1.5.1.8
 --#7. Junk in inventory: "jewelry" will show as armor AND jewelry, but should only be shown below jewelry
+
+--#8: In dropdown box context menu show "Invert filter: " and the current filter name behind
+--#9: In dropdown box context menu show, after "Invert filter: %s" was applied, the name of the filter with a <> (unequal) in front so one can directly see it is inverted
 
 --______________________________________________________________________________________________________________________
 --                                                  NOT REPLICABLE
