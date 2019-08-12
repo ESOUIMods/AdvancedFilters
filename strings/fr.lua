@@ -22,7 +22,7 @@ local strings = {
 
     --DROPDOWN CONTEXT MENU
     ResetToAll           = "Tout réinitialiser",
-    InvertDropdownFilter = "Inverser la sélection",
+    InvertDropdownFilter = "Inverser filtre: %s",
 
     --LAM settings menu
     lamDescription = "",

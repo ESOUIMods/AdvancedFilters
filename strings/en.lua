@@ -132,7 +132,7 @@ local strings = {
 
     --DROPDOWN CONTEXT MENU
     ResetToAll = "Reset to \'All\'",
-    InvertDropdownFilter = "Invert dropdown filter",
+    InvertDropdownFilter = "Invert filter: %s",
 
     --LibMotifCategories
     NormalStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_NORMAL),

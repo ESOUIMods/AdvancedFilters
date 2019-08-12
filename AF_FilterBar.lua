@@ -57,47 +57,59 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
                 comboBox:ShowDropdownInternal()
             end
         elseif mouseButton == MOUSE_BUTTON_INDEX_RIGHT and upInside then
+            --Add the currently active filtername to the dropdown "Invert" entry
+            local button = self:GetCurrentButton()
+            if not button then return end
+            local currentActiveFilterName = button.previousDropdownSelection.name or ""
+            local invertFilterText = string.format(AF.strings.InvertDropdownFilter, currentActiveFilterName)
             local entries = {
                 [1] = {
                     name = AF.strings.ResetToAll,
                     callback = function()
                         comboBox:SelectFirstItem()
-
-                        local button = self:GetCurrentButton()
                         button.previousDropdownSelection = comboBox.m_sortedItems[1]
+
+                        PlaySound(SOUNDS.MENU_BAR_CLICK)
 
                         local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
                         AF.util.LibFilters:RequestUpdate(filterType)
-
-                        PlaySound(SOUNDS.MENU_BAR_CLICK)
                     end,
                 },
-                [2] = {
-                    name = AF.strings.InvertDropdownFilter,
-                    callback = function()
-                        local button = self:GetCurrentButton()
 
+                [2] = {
+                    name = invertFilterText,
+                    callback = function()
                         local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
+                        local lastSelectedItem = button.previousDropdownSelection
+                        local currentlySelectedDropdownItem = comboBox.m_selectedItemData
+                        if not currentlySelectedDropdownItem then return end
                         local originalCallback = AF.util.LibFilters:GetFilterCallback("AF_DropdownFilter", filterType)
                         local filterCallback = function(slot, slotIndex)
                             return not originalCallback(slot, slotIndex)
                         end
+                        --Build the now new selected item of the dropdown with the inverted data
+                        local newSelectedItem = {}
+                        newSelectedItem.callback = filterCallback
+                        --Remove all old <> (unequal) signs
+                        currentlySelectedDropdownItem.name = string.gsub(currentlySelectedDropdownItem.name, "≠", "")
+                        if lastSelectedItem and lastSelectedItem.isInverted then
+                            newSelectedItem.isInverted = false
+                            newSelectedItem.name = currentlySelectedDropdownItem.name
+                        else
+                            newSelectedItem.isInverted = true
+                            newSelectedItem.name = "≠" .. currentlySelectedDropdownItem.name
+                        end
+                        button.previousDropdownSelection = newSelectedItem
+                        comboBox.m_selectedItemText:SetText(newSelectedItem.name)
+
+                        PlaySound(SOUNDS.MENU_BAR_CLICK)
 
                         AF.util.LibFilters:UnregisterFilter("AF_DropdownFilter", filterType)
                         AF.util.LibFilters:RegisterFilter("AF_DropdownFilter", filterType, filterCallback)
                         AF.util.LibFilters:RequestUpdate(filterType)
-
-                        PlaySound(SOUNDS.MENU_BAR_CLICK)
-
-                        --Update the count of filtered/shown items in the inventory FreeSlot label
-                        --Delay this function call as the data needs to be filtered first!
-                        zo_callLater(function()
-                            AF.util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
-                        end, 50)
                     end,
                 },
             }
-
             ClearMenu()
             for _, entry in ipairs(entries) do
                 AddCustomMenuItem(entry.name, entry.callback, MENU_ADD_OPTION_LABEL)
@@ -317,12 +329,30 @@ function AF_FilterBar:ActivateButton(newButton)
     self.dropdown.m_comboBox.m_sortedItems = {}
     --add new dropdown data
     PopulateDropdown()
-    --restore previous dropdown selection
-    self.dropdown.m_comboBox:SelectItem(newButton.previousDropdownSelection)
     --select the first item if there is no previos selection
     if not newButton.previousDropdownSelection then
         self.dropdown.m_comboBox:SelectFirstItem()
         newButton.previousDropdownSelection = self.dropdown.m_comboBox.m_sortedItems[1]
+    else
+        local previousDropdownSelection = newButton.previousDropdownSelection
+        --restore previous dropdown selection
+        --Check if the previous selection was a right mouse context menu "invert" option
+        if previousDropdownSelection.isInverted then
+            --Reapply the filter of the inversion
+            local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
+            --local originalCallback = AF.util.LibFilters:GetFilterCallback("AF_DropdownFilter", filterType)
+            local originalCallback = previousDropdownSelection.callback
+            local filterCallback = function(slot, slotIndex)
+                return originalCallback(slot, slotIndex)
+            end
+            AF.util.LibFilters:UnregisterFilter("AF_DropdownFilter", filterType)
+            AF.util.LibFilters:RegisterFilter("AF_DropdownFilter", filterType, filterCallback)
+            AF.util.LibFilters:RequestUpdate(filterType)
+            --Select the dropdown entry but do not call the callback function as the filter was updated above already
+            self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, true)
+        else
+            self.dropdown.m_comboBox:SelectItem(previousDropdownSelection)
+        end
     end
 end
 

@@ -44,7 +44,7 @@ local strings = {
 
     --DROPDOWN CONTEXT MENU
     ResetToAll = "Сбросить все",
-    InvertDropdownFilter = "Инверт.выпадающий фильтр",
+    InvertDropdownFilter = "Инвертировать фильтр: %s",
 
     --LAM settings menu
     lamDescription = "Показывать дополнительные фильтры в инвентаре, для разделения типов предметов",

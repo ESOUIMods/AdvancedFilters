@@ -42,7 +42,7 @@ local strings = {
 
     --DROPDOWN CONTEXT MENU
     ResetToAll = "全てリセット",
-    InvertDropdownFilter = "ドロップダウンフィルタ反転",
+    InvertDropdownFilter = "フィルターを反転: %s",
 }
 setmetatable(strings, {__index = enStrings})
 AdvancedFilters.strings = strings

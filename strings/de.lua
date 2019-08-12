@@ -7,7 +7,7 @@ local strings = {
     Shield = zo_strformat("<<m:1>>", GetString(SI_ITEMSTYLECHAPTER13)),
 
     ResetToAll           = util.Localize(SI_ITEMFILTERTYPE0) .. " anzeigen",
-    InvertDropdownFilter = "Filter umdrehen",
+    InvertDropdownFilter = "Filter umdrehen: %s",
 
     --LAM settings menu
     lamDescription = "Zeige zusätzliche Filter Kategorien in den Inventaren, um Gegenstandstypen zu unterscheiden",

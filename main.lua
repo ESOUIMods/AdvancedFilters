@@ -1,5 +1,8 @@
 --ToDo: 11.08.2019
---Max bugs: #7
+--Max bugs: #8
+
+--#8: In dropdown box context menu show "Invert filter: " and the current filter name behind
+--#9: In dropdown box context menu show, after "Invert filter: %s" was applied, the name of the filter with a -! in front so one can directly see it is inverted
 
 --______________________________________________________________________________________________________________________
 --                                                  FIXED
@@ -247,7 +250,6 @@ local function InitializeHooks()
         local function UpdateListAnchors(self, shiftY)
             --d(">UpdateListAnchors - shiftY: " .. tostring(shiftY))
             if self == nil then return end
-            AF._self = self
             local layoutData = self.appliedLayout or BACKPACK_DEFAULT_LAYOUT_FRAGMENT.layoutData
             if not layoutData then return end
             local list = self.list or self.inventories[AF.currentInventoryType].listView

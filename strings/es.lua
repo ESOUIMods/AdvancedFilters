@@ -41,7 +41,7 @@ local strings = {
 
     --DROPDOWN CONTEXT MENU
     ResetToAll           = "Mostrar todo",
-    InvertDropdownFilter = "Filtro invertido",
+    InvertDropdownFilter = "Filtro invertido: %s",
 }
 
 local light = " (ligera)"
