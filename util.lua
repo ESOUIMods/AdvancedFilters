@@ -77,7 +77,6 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
         --Run an end callback function now?
         local endCallback = button.filterEndCallback
         if endCallback and type(endCallback) == "function" then
-d("[AF]blubb")
             endCallback()
         end
     end, 50)
