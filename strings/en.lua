@@ -190,7 +190,12 @@ local strings = {
     lamGrayOutSubFiltersWithNoItemsTT = "Disable the subfilter buttons where no items are available.",
     lamShowIconsInFilterDropdowns = "Show icons in dropdown box",
     lamShowIconsInFilterDropdownsTT = "Show icons for the filter entries in the filter dropdown boxes",
-    lamDebugOutput = "Debug"
+    lamRememberFilterDropdownsLastSelection = "Remember last filter dropdown selection",
+    lamRememberFilterDropdownsLastSelectionTT = "Remenber the last filter dropdown box at each subfilter and filterpanel (inventory, mail, crafting table, ...) and re-apply this filter in the dropdown entry if you return to this filterpanel and subfilter.\nThis will NOT be saved if you logout/do a reload of the UI!",
+    lamDebugOutput = "Debug",
+
+    --Error messages
+    errorCheckChatPlease = "|cFF0000[AdvancedFilters ERROR]|r Please read the chat error message!",
 }
 strings.Vanity = strings.Disguise
 
@@ -235,4 +240,5 @@ strings.Swift_Neck = strings.Swift .. neckStr
 strings.Triune_Neck = strings.Triune .. neckStr
 strings.Protective_Neck = strings.Protective .. neckStr
 
+AdvancedFilters.ENstrings = strings
 AdvancedFilters.strings = strings

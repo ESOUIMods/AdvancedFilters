@@ -3,6 +3,8 @@ local AF = AdvancedFilters
 AF.AF_FilterBar = ZO_Object:Subclass()
 local AF_FilterBar = AF.AF_FilterBar
 local BuildDropdownCallbacks = AF.util.BuildDropdownCallbacks
+local showChatDebug = AF.showChatDebug
+local util = AF.util
 
 function AF_FilterBar:New(inventoryName, tradeSkillname, groupName, subfilterNames, excludeTheseButtons)
     local obj = ZO_Object.New(self)
@@ -35,7 +37,12 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
 
     self.label = self.control:GetNamedChild("Label")
     self.label:SetModifyTextType(MODIFY_TEXT_TYPE_UPPERCASE)
-    local allText = AF.strings[AF_CONST_ALL] or AF_CONST_ALL
+	local allText = AF_CONST_ALL
+    if AF.strings and AF.strings[AF_CONST_ALL] then
+        allText = AF.strings[AF_CONST_ALL]
+    else
+        showChatDebug("AF_FilterBar:Initialize", "AF.strings missing for: " ..tostring(AF_CONST_ALL) .. ", language: " .. tostring(AF.clientLang) .. ", inventoryName: " .. tostring(inventoryName) .. ", tradeSkillname: " ..tostring(tradeSkillname) .. ",groupName: " ..tostring(groupName))
+    end
     self.label:SetText(allText)
 
     self.divider = self.control:GetNamedChild("Divider")
@@ -57,39 +64,47 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
                 comboBox:ShowDropdownInternal()
             end
         elseif mouseButton == MOUSE_BUTTON_INDEX_RIGHT and upInside then
+            --Get the current LibFilters filterPanelId
+            local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
             --Add the currently active filtername to the dropdown "Invert" entry
             local button = self:GetCurrentButton()
             if not button then return end
-            local currentActiveFilterName = button.previousDropdownSelection.name or ""
+--d("[AF]AF_FilterBar:Initialize - DropdownOnMouseUpHandler, 2: " .. tostring(button.name) .. ", filterPanelId: " ..tostring(filterPanelIdActive))
+            local previousDropdownSelection = (button.previousDropdownSelection ~= nil and button.previousDropdownSelection[filterPanelIdActive]) or nil
+            local currentActiveFilterName = previousDropdownSelection.name or ""
             local invertFilterText = string.format(AF.strings.InvertDropdownFilter, currentActiveFilterName)
             local entries = {
                 [1] = {
                     name = AF.strings.ResetToAll,
                     callback = function()
                         comboBox:SelectFirstItem()
-                        button.previousDropdownSelection = comboBox.m_sortedItems[1]
+                        filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+                        button.previousDropdownSelection[filterPanelIdActive] = comboBox.m_sortedItems[1]
 
                         PlaySound(SOUNDS.MENU_BAR_CLICK)
 
-                        local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
-                        AF.util.LibFilters:RequestUpdate(filterType)
+                        local filterType = util.GetCurrentFilterTypeForInventory(self.inventoryType)
+                        util.LibFilters:RequestUpdate(filterType)
                     end,
                 },
 
                 [2] = {
                     name = invertFilterText,
                     callback = function()
-                        local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
-                        local lastSelectedItem = button.previousDropdownSelection
+                        filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+                        local filterType = util.GetCurrentFilterTypeForInventory(self.inventoryType)
+                        local lastSelectedItem = (button.previousDropdownSelection ~= nil and button.previousDropdownSelection[filterPanelIdActive]) or nil
                         local currentlySelectedDropdownItem = comboBox.m_selectedItemData
                         if not currentlySelectedDropdownItem then return end
-                        local originalCallback = AF.util.LibFilters:GetFilterCallback("AF_DropdownFilter", filterType)
+                        local originalCallback = util.LibFilters:GetFilterCallback("AF_DropdownFilter", filterType)
                         local filterCallback = function(slot, slotIndex)
                             return not originalCallback(slot, slotIndex)
                         end
                         --Build the now new selected item of the dropdown with the inverted data
                         local newSelectedItem = {}
                         newSelectedItem.callback = filterCallback
+                        newSelectedItem.filterCallback = filterCallback -- For AF.util.ApplyFilter
+                        newSelectedItem.filterEndCallback = currentlySelectedDropdownItem.filterEndCallback -- For AF.util.ApplyFilter
                         --Remove all old <> (unequal) signs
                         currentlySelectedDropdownItem.name = string.gsub(currentlySelectedDropdownItem.name, "≠", "")
                         if lastSelectedItem and lastSelectedItem.isInverted then
@@ -99,14 +114,17 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
                             newSelectedItem.isInverted = true
                             newSelectedItem.name = "≠" .. currentlySelectedDropdownItem.name
                         end
-                        button.previousDropdownSelection = newSelectedItem
+                        button.previousDropdownSelection[filterPanelIdActive] = newSelectedItem
                         comboBox.m_selectedItemText:SetText(newSelectedItem.name)
 
                         PlaySound(SOUNDS.MENU_BAR_CLICK)
 
-                        AF.util.LibFilters:UnregisterFilter("AF_DropdownFilter", filterType)
-                        AF.util.LibFilters:RegisterFilter("AF_DropdownFilter", filterType, filterCallback)
-                        AF.util.LibFilters:RequestUpdate(filterType)
+                        --[[
+                        util.LibFilters:UnregisterFilter("AF_DropdownFilter", filterType)
+                        util.LibFilters:RegisterFilter("AF_DropdownFilter", filterType, filterCallback)
+                        util.LibFilters:RequestUpdate(filterType)
+                        ]]
+                        util.ApplyFilter(newSelectedItem, "AF_DropdownFilter", true, filterType)
                     end,
                 },
             }
@@ -144,8 +162,10 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
 
             local function OnSelect()
                 ZO_ComboBox_Base_ItemSelectedClickHelper(self, item)
-
-                button.previousDropdownSelection = item
+                --Get the current LibFilters filterPanelId
+                local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+                button.previousDropdownSelection = button.previousDropdownSelection or {}
+                button.previousDropdownSelection[filterPanelIdActive] = item
 
                 PlaySound(SOUNDS.MENU_BAR_CLICK)
             end
@@ -162,16 +182,22 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
                 local entry = {
                     label = AF.strings[callbackEntry.name],
                     callback = function()
-                        AF.util.ApplyFilter(callbackEntry, "AF_DropdownFilter", true)
+                        util.ApplyFilter(callbackEntry, "AF_DropdownFilter", true)
                         button.forceNextDropdownRefresh = true
                         self.m_selectedItemText:SetText(AF.strings[callbackEntry.name])
                         self.m_selectedItemData = self:CreateItemEntry(AF.strings[callbackEntry.name],
                                 function(comboBox, itemName, item, selectionChanged)
-                                    AF.util.ApplyFilter(callbackEntry,
+                                    util.ApplyFilter(callbackEntry,
                                             "AF_DropdownFilter",
                                             selectionChanged or button.forceNextDropdownRefresh)
                                 end)
-                        button.previousDropdownSelection = self.m_selectedItemData
+                        if callbackEntry.filterEndCallback then
+                            self.m_selectedItemData.filterEndCallback = callbackEntry.filterEndCallback
+                        end
+                        --Get the current LibFilters filterPanelId
+                        local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+                        button.previousDropdownSelection = button.previousDropdownSelection or {}
+                        button.previousDropdownSelection[filterPanelIdActive] = self.m_selectedItemData
 
                         PlaySound(SOUNDS.MENU_BAR_CLICK)
 
@@ -276,12 +302,13 @@ function AF_FilterBar:AddSubfilter(groupName, subfilterName)
 end
 
 function AF_FilterBar:ActivateButton(newButton)
-    local function PopulateDropdown()
+    --------------------------------------------------------------------------------------------------------------------
+    local function PopulateDropdown(p_newButton)
         local comboBox = self.dropdown.m_comboBox
-        newButton.dropdownCallbacks = BuildDropdownCallbacks(newButton.groupName, newButton.name)
+        p_newButton.dropdownCallbacks = BuildDropdownCallbacks(p_newButton.groupName, p_newButton.name)
 
         comboBox.submenuCandidates = {}
-        for _, v in ipairs(newButton.dropdownCallbacks) do
+        for _, v in ipairs(p_newButton.dropdownCallbacks) do
             if v.submenuName then
                 table.insert(comboBox.submenuCandidates, v)
             else
@@ -307,8 +334,11 @@ function AF_FilterBar:ActivateButton(newButton)
                     end
                     local itemEntry = ZO_ComboBox:CreateItemEntry(itemEntryName,
                             function(comboBox, itemName, item, selectionChanged)
-                                AF.util.ApplyFilter(v, "AF_DropdownFilter", selectionChanged or newButton.forceNextDropdownRefresh)
+                                util.ApplyFilter(v, "AF_DropdownFilter", selectionChanged or p_newButton.forceNextDropdownRefresh)
                             end)
+                    if v.filterEndCallback then
+                        itemEntry.filterEndCallback = v.filterEndCallback
+                    end
                     comboBox:AddItem(itemEntry)
                 end
             end
@@ -316,9 +346,16 @@ function AF_FilterBar:ActivateButton(newButton)
         comboBox:SetSelectedItemFont("ZoFontGameSmall")
         comboBox:SetDropdownFont("ZoFontGameSmall")
     end
-
+    --------------------------------------------------------------------------------------------------------------------
     local name = newButton.name
-    self.label:SetText(AF.strings[name])
+    local nameText
+    if AF.strings and AF.strings[name] then
+        nameText = AF.strings[name]
+    else
+        showChatDebug("AF_FilterBar:ActivateButton", "AF.strings missing for name: " ..tostring(name) .. ", language: " .. tostring(AF.clientLang))
+        nameText = "ERROR: n/a"
+    end
+    self.label:SetText(nameText)
     local settings = AF.settings
     self.label:SetHidden(settings.hideSubFilterLabel)
 
@@ -333,34 +370,39 @@ function AF_FilterBar:ActivateButton(newButton)
     newButton:SetEnabled(false)
 
     --refresh filter
-    AF.util.ApplyFilter(newButton, "AF_ButtonFilter", true)
+    util.ApplyFilter(newButton, "AF_ButtonFilter", true)
 
     --set new active button reference
     self.activeButton = newButton
 
     --clear old dropdown data
     self.dropdown.m_comboBox.m_sortedItems = {}
+    --Get the current LibFilters filterPanelId
+    local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+--d("[AF]AF_FilterBar:ActivateButton: " .. tostring(newButton.name) .. ", filterPanelId: " ..tostring(filterPanelIdActive))
     --add new dropdown data
-    PopulateDropdown()
-    --select the first item if there is no previos selection
-    if not newButton.previousDropdownSelection then
+    PopulateDropdown(newButton)
+    --select the first item if there is no previous selection or the setting to remember the last selection is disabled
+    if not AF.settings.rememberFilterDropdownsLastSelection or not newButton.previousDropdownSelection or not newButton.previousDropdownSelection[filterPanelIdActive] then
+        --Select the first entry
         self.dropdown.m_comboBox:SelectFirstItem()
-        newButton.previousDropdownSelection = self.dropdown.m_comboBox.m_sortedItems[1]
+        newButton.previousDropdownSelection = newButton.previousDropdownSelection or {}
+        newButton.previousDropdownSelection[filterPanelIdActive] = self.dropdown.m_comboBox.m_sortedItems[1]
     else
-        local previousDropdownSelection = newButton.previousDropdownSelection
-        --restore previous dropdown selection
+        --restore previous dropdown selection if the settings is enabled for this
+        local previousDropdownSelection = newButton.previousDropdownSelection[filterPanelIdActive]
         --Check if the previous selection was a right mouse context menu "invert" option
         if previousDropdownSelection.isInverted then
             --Reapply the filter of the inversion
-            local filterType = AF.util.GetCurrentFilterTypeForInventory(self.inventoryType)
-            --local originalCallback = AF.util.LibFilters:GetFilterCallback("AF_DropdownFilter", filterType)
+            local filterType = util.GetCurrentFilterTypeForInventory(self.inventoryType)
+            --local originalCallback = util.LibFilters:GetFilterCallback("AF_DropdownFilter", filterType)
             local originalCallback = previousDropdownSelection.callback
             local filterCallback = function(slot, slotIndex)
                 return originalCallback(slot, slotIndex)
             end
-            AF.util.LibFilters:UnregisterFilter("AF_DropdownFilter", filterType)
-            AF.util.LibFilters:RegisterFilter("AF_DropdownFilter", filterType, filterCallback)
-            AF.util.LibFilters:RequestUpdate(filterType)
+            util.LibFilters:UnregisterFilter("AF_DropdownFilter", filterType)
+            util.LibFilters:RegisterFilter("AF_DropdownFilter", filterType, filterCallback)
+            util.LibFilters:RequestUpdate(filterType)
             --Select the dropdown entry but do not call the callback function as the filter was updated above already
             self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, true)
         else

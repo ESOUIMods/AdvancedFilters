@@ -45,11 +45,11 @@ function util.AbortSubfilterRefresh(inventoryType)
     return doAbort
 end
 
-function util.ApplyFilter(button, filterTag, requestUpdate)
+function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
 
-    local LibFilters = util.LibFilters
-    local callback = button.filterCallback
-    local filterType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    local LibFilters        = util.LibFilters
+    local callback          = button.filterCallback
+    local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
 
 --d("[AF]Apply " .. button.name .. " from " .. filterTag .. " for filterType " .. filterType .. " and inventoryType " .. AF.currentInventoryType)
 
@@ -58,7 +58,7 @@ function util.ApplyFilter(button, filterTag, requestUpdate)
         d("callback was nil for " .. filterTag)
         return
     end
-    if filterType == nil then
+    if filterTypeToUse == nil then
         d("filterType was nil for " .. filterTag)
         return
     end
@@ -66,13 +66,20 @@ function util.ApplyFilter(button, filterTag, requestUpdate)
     --first, clear current filters without an update
     LibFilters:UnregisterFilter(filterTag)
     --then register new one and hand off update parameter
-    LibFilters:RegisterFilter(filterTag, filterType, callback)
-    if requestUpdate == true then LibFilters:RequestUpdate(filterType) end
+    LibFilters:RegisterFilter(filterTag, filterTypeToUse, callback)
+    if requestUpdate == true then LibFilters:RequestUpdate(filterTypeToUse) end
 
     --Update the count of filtered/shown items in the inventory FreeSlot label
     --Delay this function call as the data needs to be filtered first!
     zo_callLater(function()
         util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
+
+        --Run an end callback function now?
+        local endCallback = button.filterEndCallback
+        if endCallback and type(endCallback) == "function" then
+d("[AF]blubb")
+            endCallback()
+        end
     end, 50)
 end
 

@@ -1,5 +1,5 @@
 local util = AdvancedFilters.util
-local enStrings = AdvancedFilters.strings
+local enStrings = AdvancedFilters.ENstrings
 local strings = {
      --WEAPON
     OneHand = "Una Mano",

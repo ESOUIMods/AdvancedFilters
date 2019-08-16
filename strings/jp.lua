@@ -1,5 +1,5 @@
 local util = AdvancedFilters.util
-local enStrings = AdvancedFilters.strings
+local enStrings = AdvancedFilters.ENstrings
 local strings = {
     --WEAPON
     OneHand = "片手武器",
@@ -43,6 +43,9 @@ local strings = {
     --DROPDOWN CONTEXT MENU
     ResetToAll = "全てリセット",
     InvertDropdownFilter = "フィルターを反転: %s",
+
+    --Error messages
+    errorCheckChatPlease = "|cFF0000[AdvancedFilters エラー]|r チャットエラーメッセージをお読みください!",
 }
 setmetatable(strings, {__index = enStrings})
 AdvancedFilters.strings = strings

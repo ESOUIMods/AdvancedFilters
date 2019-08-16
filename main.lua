@@ -1,45 +1,19 @@
 --ToDo: 11.08.2019
---Max bugs: #9
+--Max todos: #10
+
+--______________________________________________________________________________________________________________________
+--                                                  TODO
+--______________________________________________________________________________________________________________________
+--#10: 2019-08-16 - feature - Baertram
+--Move the dropdown filter boixes from the subFilter buttons to a table containing the possible LibFiltes filterPanelIds
+--for the submenu button. e.g. Move dropdown filter box of subFilter button Armor->All in the inventory to subFilter button
+--Armor->All->LF_INVENTORY and also add LF_MAIL_SEND and LF_PLAYER_TRADE etc. so the dropdown boxes remember their filters
+--differently for each active filterPanlId
 
 --______________________________________________________________________________________________________________________
 --                                                  FIXED
 --______________________________________________________________________________________________________________________
---Fixed 2019-08-09, AF 1.5.1.8
---3. Error message upon loading of the game on live (User: darkedone02)
---Got this error when I launched.
---[[
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: attempt to index a nil value
-stack traceback:
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:38: in function 'AF_FilterBar:Initialize'
-|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, _ = true, _ = 9, _ = ud, _ = 9, _ = 0, offsetY = 63, parents = tbl, parent = ud </Locals>|r
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:9: in function 'AF_FilterBar:New'
-|caaaaaa<Locals> self = tbl, inventoryName = "SmithingDeconstruction", tradeSkillname = "_BLACKSMITH_", groupName = "All", subfilterNames = tbl, obj = tbl </Locals>|r
-user:/AddOns/AdvancedFilters/AF_FilterBar.lua:364: in function 'AF.CreateSubfilterBars'
-|caaaaaa<Locals> doDebugOutput = false, inventoryNames = tbl, tradeSkillNames = tbl, filterTypeNames = tbl, subfilterGroups = tbl, subfilterButtonNames = tbl, inventoryType = 16, tradeSkillTypeSubFilterGroup = tbl, tradeSkillType = 1, subfilterGroup = tbl, itemFilterType = 0, _ = tbl </Locals>|r
-user:/AddOns/AdvancedFilters/main.lua:890: in function 'AdvancedFilters_Loaded'
-|caaaaaa<Locals> eventCode = 65536, addonName = "AdvancedFilters" </Locals>|r
-]]
 
---Fixed 2019-08-09, AF 1.5.1.8
---5. Error upon opening vendor BUY panel
---[[
-user:/AddOns/AdvancedFilters/main.lua:218: function expected instead of nil
-stack traceback:
-user:/AddOns/AdvancedFilters/main.lua:218: in function 'UpdateListAnchors'
-|caaaaaa<Locals> self = tbl, shiftY = 40, layoutData = tbl, list = ud </Locals>|r
-user:/AddOns/AdvancedFilters/main.lua:277: in function 'ShowSubfilterBar'
-|caaaaaa<Locals> currentFilter = 0, craftingType = 0, UpdateListAnchors = user:/AddOns/AdvancedFilters/main.lua:205, doDebugOutput = false, subfilterGroup = tbl, subfilterBar = tbl, isCraftingInventoryType = false </Locals>|r
-user:/AddOns/AdvancedFilters/util.lua:732: in function 'Update'
-]]
-
---Fixed 2019-08-09, AF 1.5.1.8
---6. Guild store sell tab shows subcategories enabled where there are no items in there to sell (maybe bound items exist, or stolen ones)
-
---Fixed 2019-08-09, AF 1.5.1.8
---#7. Junk in inventory: "jewelry" will show as armor AND jewelry, but should only be shown below jewelry
-
---#8: In dropdown box context menu show "Invert filter: " and the current filter name behind
---#9: In dropdown box context menu show, after "Invert filter: %s" was applied, the name of the filter with a <> (unequal) in front so one can directly see it is inverted
 
 --______________________________________________________________________________________________________________________
 --                                                  NOT REPLICABLE
@@ -108,10 +82,25 @@ local GetInventoryFromCraftingPanel         = util.GetInventoryFromCraftingPanel
 local IsCraftingStationInventoryType        = util.IsCraftingStationInventoryType
 local IsCraftingPanelShown                  = util.IsCraftingPanelShown
 
-local function showChatDebug(functionName, chatOutputVars)
+function AF.showChatDebug(functionName, chatOutputVars)
     local functionNameStr = tostring(functionName) or "n/a"
     functionNameStr = " " .. functionNameStr
     chatOutputVars = chatOutputVars or ""
+    --Center screen annonucenment
+    local csaText
+    if AF.strings and AF.strings["errorCheckChatPlease"] then
+        csaText = AF.strings["errorCheckChatPlease"]
+    else
+        csaText = "|cFF0000[AdvancedFilters ERROR]|r Please read the error message in the chat!"
+    end
+    if csaText ~= "" then
+        local params = CENTER_SCREEN_ANNOUNCE:CreateMessageParams(CSA_CATEGORY_LARGE_TEXT, SOUNDS.GROUP_KICK)
+        params:SetCSAType(CENTER_SCREEN_ANNOUNCE_TYPE_DISPLAY_ANNOUNCEMENT)
+        params:SetText(csaText)
+        CENTER_SCREEN_ANNOUNCE:AddMessageWithParams(params)
+    end
+
+    --Chat output
     d(">====================================>")
     d("[AdvancedFilters - ERROR]" .. tostring(functionNameStr))
     d("!> Please answer the following 4 questions and send the answers (and if given: the variables shown in the lines, starting with ->, after the questions) to the addon's comments of AdvancedFilters @www.esoui.com:\n https://bit.ly/2IlJ56J")
@@ -122,6 +111,7 @@ local function showChatDebug(functionName, chatOutputVars)
     d("Thank you very much for your invested time and the will to fix this addon!")
     d("<====================================<")
 end
+local showChatDebug = AF.showChatDebug
 
 local function InitializeHooks()
     AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
@@ -283,10 +273,6 @@ local function InitializeHooks()
             end
             if currentFilter == nil then
                 showErrorInChat = true
-            else
-                if AF.subFiltersBarInactive[currentFilter] == nil then
-                    showErrorInChat = true
-                end
             end
             if craftingType == nil then
                 showErrorInChat = true
@@ -295,11 +281,12 @@ local function InitializeHooks()
                 local nextSubfilterBar = AF.subfilterGroups[AF.currentInventoryType][craftingType][currentFilter]
                 if nextSubfilterBar == nil then
                     subfilterBarMissing = true
+                    showErrorInChat = true
                 end
             end
             --Show a debug message now and abort here?
             if showErrorInChat then
-                showChatDebug("ShowSubfilterBar", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
+                showChatDebug("ShowSubfilterBar - BEGIN", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
             end
             return false
         end
@@ -382,7 +369,7 @@ local function InitializeHooks()
             --Error handling: Showing new subfilter bar
             if doDebugOutput then
                 if currentFilter == nil or (currentFilter ~= nil and AF.subFiltersBarInactive[currentFilter] == nil) then
-                    showChatDebug("ShowSubfilterBar", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter))
+                    showChatDebug("ShowSubfilterBar - END", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter))
                 end
             end
         end
@@ -562,6 +549,11 @@ local function InitializeHooks()
             AF.currentInventoryType = LF_ENCHANTING_EXTRACTION
         end
         return false
+    end
+    --Multicraft addon breaks this addon! Disable it before you can use AdvancedFilters
+    if AF.otherAddons["MultiCraft"] or MultiCraft ~= nil then
+        showChatDebug("PostHook ZO_Enchanting OnModeUpdated -> PLEASE DISABLE THE ADDON \'MultiCraft\'!", AF.errorStrings["MultiCraft"])
+        return
     end
     --ZO_PreHook(ZO_Enchanting, "SetEnchantingMode", HookEnchantingSetEnchantingMode)
     local origEnchantingSetEnchantMode = ZO_Enchanting.SetEnchantingMode
@@ -975,9 +967,27 @@ elseif bankType == "hb" then
     end
 end
 
+--Check if other addons are activated and output an error message if they brak AdvancedFilters
+function AF.checkForOtherAddonErrors(eventName, initial)
+    if not AF.otherAddons then return end
+    if AF.otherAddons["MultiCraft"] or MultiCraft ~= nil then
+        showChatDebug("Other addon breaks \'AdvancedFilters\' -> PLEASE DISABLE THE ADDON \'MultiCraft\'!", AF.errorStrings["MultiCraft"])
+        return
+    end
+end
+
 local function AdvancedFilters_Loaded(eventCode, addonName)
+    if addonName == "MultiCraft" then
+        AF.otherAddons[addonName] = true
+    end
     if addonName ~= AF.name then return end
     EVENT_MANAGER:UnregisterForEvent(AF.name .. "_Loaded", EVENT_ADD_ON_LOADED)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_PlayerActivated", EVENT_PLAYER_ACTIVATED,   AF.checkForOtherAddonErrors)
+    --Do not load anything further if the addon MultiCraft is enabled
+    if AF.otherAddons["MultiCraft"] or MultiCraft ~= nil then
+        return
+    end
+
     --Register a callback function for crafting stations: If you leave them reseet the current inventory type to INVENTORY_BACKPACK
     EVENT_MANAGER:RegisterForEvent(AF.name .. "_CraftingStationLeave",          EVENT_END_CRAFTING_STATION_INTERACT,    onEndCraftingStationInteract)
     EVENT_MANAGER:RegisterForEvent(AF.name .. "_CraftingStationCraftFinished",  EVENT_CRAFT_COMPLETED,                  onCraftingComplete)
@@ -992,22 +1002,9 @@ local function AdvancedFilters_Loaded(eventCode, addonName)
     EVENT_MANAGER:RegisterForEvent(AF.name .. "_GuildBankClosed", EVENT_CLOSE_GUILD_BANK,   function() SetBankEventVariable("gb", false) end)
     --Bufix to reset "store"'s currentFilter as stable closes
     EVENT_MANAGER:RegisterForEvent(AF.name .. "_StableClosed", EVENT_STABLE_INTERACT_END,   function() controlsForChecks.store.currentFilter = ITEMFILTERTYPE_ALL end)
+
     --Create instance of library libFilters
     util.LibFilters:InitializeLibFilters()
-    --SavedVariables default settings
-    AF.defaultSettings = {
-        doDebugOutput       = false,
-        hideItemCount       = false,
-        itemCountLabelColor = {
-            ["r"] = 1,
-            ["g"] = 1,
-            ["b"] = 1,
-            ["a"] = 1,
-        },
-        hideSubFilterLabel  = false,
-        grayOutSubFiltersWithNoItems = true,
-        showIconsInFilterDropdowns = true,
-    }
     --SavedVariables
     AF.settings = ZO_SavedVars:NewAccountWide(AF.name .. "_Settings", AF.savedVarsVersion, "Settings", AF.defaultSettings, GetWorldName())
     --Create the subfilter bars below the normal inventories filters
