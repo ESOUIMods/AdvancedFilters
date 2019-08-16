@@ -1,5 +1,5 @@
 local util = AdvancedFilters.util
-local enStrings = AdvancedFilters.strings
+local enStrings = AdvancedFilters.ENstrings
 local strings = {
     --SHARED
     All = "Все",
@@ -54,6 +54,9 @@ local strings = {
     lamHideItemCountColorTT = "Установить цвет количество предметов в нижней строке инвентаря",
     lamHideSubFilterLabel = "Скрыть метку подфильтра",
     lamHideSubFilterLabelTT = "Скрыть метку описания подфильтра в верхней строке инвентаря (слева от кнопок подфильтров).",
+
+    --Error messages
+    errorCheckChatPlease = "|cFF0000[AdvancedFilters ОШИБКА]|r Пожалуйста, прочитайте сообщение об ошибке чата!",
 }
 setmetatable(strings, {__index = enStrings})
 

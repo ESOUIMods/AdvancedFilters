@@ -1,5 +1,5 @@
 local util = AdvancedFilters.util
-local enStrings = AdvancedFilters.strings
+local enStrings = AdvancedFilters.ENstrings
 local strings = {
     TwoHandAxe = util.Localize(zo_strformat("<<1>> <<2>>", GetString(SI_EQUIPTYPE6), GetString(SI_WEAPONTYPE1))),
     TwoHandSword = util.Localize(zo_strformat("<<1>> <<2>>", GetString(SI_EQUIPTYPE6), GetString(SI_WEAPONTYPE3))),
@@ -21,6 +21,11 @@ local strings = {
     lamGrayOutSubFiltersWithNoItemsTT = "Deaktiviert die Filter Kategorien, welche aktuell keine Gegegnstände besitzen.",
     lamShowIconsInFilterDropdowns = "Zeige Symbole in Filter Boxen",
     lamShowIconsInFilterDropdownsTT = "Zeige Symbole in den Filter Aufklapp Boxen an",
+    lamRememberFilterDropdownsLastSelection = "Merke letzte Filter Box Auswahl",
+    lamRememberFilterDropdownsLastSelectionTT = "Merkt sich je Unterfilter und Filter Panel (Inventar, Mail senden, Handerksstation, ...) die letzte Filter Box Auswahl und stellt diese wieder her, wenn du den Unterfilter auf diesem Filter Panel das nächste mal besuchst.\NDies wird NICHT über eine Ausloggen/Benutzeroberfläche Neuladen hinweg gemerkt!",
+
+    --Error messages
+    errorCheckChatPlease = "|cFF0000[AdvancedFilters FEHLER]|r Bitte lese die Fehlermeldung im Chat!",
 }
 setmetatable(strings, {__index = enStrings})
 AdvancedFilters.strings = strings

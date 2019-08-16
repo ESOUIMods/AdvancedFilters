@@ -25,7 +25,9 @@ function AF.LAMSettingsMenu()
             registerForRefresh 	= true,
             registerForDefaults = true,
             slashCommand 		= "/afs",
-            website             = AF.website
+            website             = AF.website,
+            feedback            = AF.feedback,
+            donation            = AF.donation,
         }
         --The LibAddonMenu2.0 settings panel reference variable
         AF.LAMsettingsPanel = AF.LAM:RegisterAddonPanel(AF.name .. "_LAM", panelData)
@@ -95,6 +97,17 @@ function AF.LAMSettingsMenu()
                     AF.settings.showIconsInFilterDropdowns = value
                 end,
                 default = defSettings.showIconsInFilterDropdowns,
+            },
+            --==============================================================================
+            {
+                type = "checkbox",
+                name = strings.lamRememberFilterDropdownsLastSelection,
+                tooltip = strings.lamRememberFilterDropdownsLastSelectionTT,
+                getFunc = function() return settings.rememberFilterDropdownsLastSelection end,
+                setFunc = function(value)
+                    AF.settings.rememberFilterDropdownsLastSelection = value
+                end,
+                default = defSettings.rememberFilterDropdownsLastSelection,
             },
             --==============================================================================
             --                              DEBUG

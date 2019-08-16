@@ -1,5 +1,5 @@
 local util = AdvancedFilters.util
-local enStrings = AdvancedFilters.strings
+local enStrings = AdvancedFilters.ENstrings
 local strings = {
     --WEAPON
     OneHand = "Une main",
@@ -36,7 +36,10 @@ local strings = {
     lamGrayOutSubFiltersWithNoItemsTT = "Masque le bouton des sous-catégories ne comportant aucun objet.",
     lamShowIconsInFilterDropdowns = "Afficher les icônes dans le menu déroulant",
     lamShowIconsInFilterDropdownsTT = "Affiche les icônes des sous-catégories d'objet dans le menu déroulant de filtrage par type d'objet.",
-    lamDebugOutput = "Déboguage"
+    lamDebugOutput = "Déboguage",
+
+    --Error messages
+    errorCheckChatPlease = "|cFF0000[AdvancedFilters ERREUR]|r Veuillez lire le message d'erreur du chat!",
 }
 
 setmetatable(strings, {__index = enStrings})

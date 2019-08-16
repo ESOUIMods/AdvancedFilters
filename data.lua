@@ -674,7 +674,9 @@ AF.subfilterCallbacks = {
             dropdownCallbacks = {},
         },
         Container = {
-            filterCallback = GetFilterCallbackForItemTypeAndSpecializedItemtype({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY, ITEMFILTERTYPE_PROVISIONING}, {SPECIALIZED_ITEMTYPE_CONTAINER}),
+            filterCallback = GetFilterCallbackForItemTypeAndSpecializedItemtype(
+                    {ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY, ITEMFILTERTYPE_PROVISIONING},
+                    {SPECIALIZED_ITEMTYPE_CONTAINER, SPECIALIZED_ITEMTYPE_CONTAINER_EVENT, SPECIALIZED_ITEMTYPE_CONTAINER_STYLE_PAGE}),
             dropdownCallbacks = {},
         },
         Repair = {

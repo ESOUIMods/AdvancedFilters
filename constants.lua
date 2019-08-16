@@ -4,10 +4,30 @@ local AF = AdvancedFilters
 --Addon base variables
 AF.name = "AdvancedFilters"
 AF.author = "ingeniousclown, Randactyl, Baertram"
-AF.version = "1.5.1.8"
+AF.version = "1.5.2.1"
 AF.savedVarsVersion = 1.511
 AF.website = "http://www.esoui.com/downloads/info245-AdvancedFilters.html"
+AF.feedback = "https://www.esoui.com/portal.php?id=136&a=faq"
+AF.donation = "https://www.esoui.com/portal.php?id=136&a=faq&faqid=131"
 AF.currentInventoryType = INVENTORY_BACKPACK
+
+AF.clientLang = GetCVar("language.2")
+
+--SavedVariables default settings
+AF.defaultSettings = {
+    doDebugOutput                           = false,
+    hideItemCount                           = false,
+    itemCountLabelColor = {
+        ["r"] = 1,
+        ["g"] = 1,
+        ["b"] = 1,
+        ["a"] = 1,
+    },
+    hideSubFilterLabel                      = false,
+    grayOutSubFiltersWithNoItems            = true,
+    showIconsInFilterDropdowns              = true,
+    rememberFilterDropdownsLastSelection    = true,
+}
 
 --Libraries
 AF.util = AF.util or {}
@@ -32,6 +52,13 @@ if not util.LibMotifCategories then d("[AdvancedFilters]ERROR: Needed library Li
 ------------------------------------------------------------------------------------------------------------------------
 -- Libraries - END
 ---------------------------------------------------------------------------------------------------------------------------
+
+--Other addons
+AF.otherAddons = {}
+
+--Error strings for thrown addon errors and chat output
+AF.errorStrings = {}
+AF.errorStrings["MultiCraft"] = "PLEASE DISABLE THE ADDON \'MultiCraft\'! AdvancedFilters cannot work if this addon is enabled. \'Multicraft\' has been replaced by ZOs own multi crafting UI so you do not need it anymore!"
 
 --Scene names for the SCENE_MANAGER.currentScene.name check
 local scenesForChecks = {
