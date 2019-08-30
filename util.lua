@@ -50,6 +50,7 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
     local LibFilters        = util.LibFilters
     local callback          = button.filterCallback
     local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    local delay             = 0
 
 --d("[AF]Apply " .. button.name .. " from " .. filterTag .. " for filterType " .. filterType .. " and inventoryType " .. AF.currentInventoryType)
 
@@ -63,23 +64,45 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
         return
     end
 
-    --first, clear current filters without an update
-    LibFilters:UnregisterFilter(filterTag)
-    --then register new one and hand off update parameter
-    LibFilters:RegisterFilter(filterTag, filterTypeToUse, callback)
-    if requestUpdate == true then LibFilters:RequestUpdate(filterTypeToUse) end
+    --Check if the parameter to reset the current dropdown filter to "All" was registered
+    -->This is needed if the dropdown filters rely on the currently "shown" (and thus already filtered) inventory items
+    -->to only use these for their filter functions/comparisons, and not ALL items of the inventories involved
+    if filterTag == AF_CONST_DROPDOWN_FILTER and button.filterResetAtStart then
+        delay = button.filterResetAtStartDelay or 50 --Set delay so the next dropdown filter will be called AFTER evertyhing got updated
+        --Clear the filters and refresh the visible inventory items now.
+        --Do not change the dropdownbox entry to "ALL" or the "lastSelectedDropdownEntry" will be changed as well!
+        --Clear current filters without an update
+        LibFilters:UnregisterFilter(filterTag)
+        --Update the inventory to show all items unfiltered again
+        LibFilters:RequestUpdate(filterTypeToUse)
+    end
 
-    --Update the count of filtered/shown items in the inventory FreeSlot label
-    --Delay this function call as the data needs to be filtered first!
+    --Call deleyed if the dropdown filter was reset to all
     zo_callLater(function()
-        util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
-
-        --Run an end callback function now?
-        local endCallback = button.filterEndCallback
-        if endCallback and type(endCallback) == "function" then
-            endCallback()
+        --Check if a function should be executed before the filters get applied
+        local filterStartCallback = button.filterStartCallback
+        if filterStartCallback and type(filterStartCallback) == "function" then
+            filterStartCallback()
         end
-    end, 50)
+
+        --first, clear current filters without an update
+        LibFilters:UnregisterFilter(filterTag)
+        --then register new one and hand off update parameter
+        LibFilters:RegisterFilter(filterTag, filterTypeToUse, callback)
+        if requestUpdate == true then LibFilters:RequestUpdate(filterTypeToUse) end
+
+        --Update the count of filtered/shown items in the inventory FreeSlot label
+        --Delay this function call as the data needs to be filtered first!
+        zo_callLater(function()
+            util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
+
+            --Run an end callback function now?
+            local endCallback = button.filterEndCallback
+            if endCallback and type(endCallback) == "function" then
+                endCallback()
+            end
+        end, 50)
+    end, delay)
 end
 
 function util.RemoveAllFilters()

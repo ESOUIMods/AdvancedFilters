@@ -4,7 +4,7 @@ local AF = AdvancedFilters
 --Addon base variables
 AF.name = "AdvancedFilters"
 AF.author = "ingeniousclown, Randactyl, Baertram"
-AF.version = "1.5.2.1"
+AF.version = "1.5.2.3"
 AF.savedVarsVersion = 1.511
 AF.website = "http://www.esoui.com/downloads/info245-AdvancedFilters.html"
 AF.feedback = "https://www.esoui.com/portal.php?id=136&a=faq"
@@ -127,6 +127,8 @@ AF.inventories = inventories
 
 --Constant for the "All" subfilters
 AF_CONST_ALL = 'All'
+--Constant for the dropdown filter box LibFilters filter
+AF_CONST_DROPDOWN_FILTER = "AF_DropdownFilter"
 
 --New defined vendor buy inventory type
 INVENTORY_TYPE_VENDOR_BUY = 900

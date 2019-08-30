@@ -316,8 +316,9 @@ local function GetFilterCallbackForStyleMaterial(categoryConst, checkOnlyJunk)
     end
 end
 
-local function GetFilterCallbackForItemTypeAndSpecializedItemtype(sItemTypes, sSpecializedItemTypes, checkOnlyJunk)
+local function GetFilterCallbackForItemTypeAndSpecializedItemtype(sItemTypes, sSpecializedItemTypes, checkOnlyJunk, needsItemTypeAndSpecializedItemType)
     checkOnlyJunk = checkOnlyJunk or false
+    needsItemTypeAndSpecializedItemType = needsItemTypeAndSpecializedItemType or false
 
     return function(slot, slotIndex)
         slot = checkCraftingStationSlot(slot, slotIndex)
@@ -328,10 +329,14 @@ local function GetFilterCallbackForItemTypeAndSpecializedItemtype(sItemTypes, sS
 
         for i = 1, #sItemTypes do
             if sItemTypes[i] == itemType then
-                for j = 1, #sSpecializedItemTypes do
-                    if sSpecializedItemTypes[j] == specializedItemType then
-                        return true
+                if needsItemTypeAndSpecializedItemType then
+                    for j = 1, #sSpecializedItemTypes do
+                        if sSpecializedItemTypes[j] == specializedItemType then
+                            return true
+                        end
                     end
+                else
+                    return true
                 end
             end
         end
@@ -675,8 +680,11 @@ AF.subfilterCallbacks = {
         },
         Container = {
             filterCallback = GetFilterCallbackForItemTypeAndSpecializedItemtype(
-                    {ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY, ITEMFILTERTYPE_PROVISIONING},
-                    {SPECIALIZED_ITEMTYPE_CONTAINER, SPECIALIZED_ITEMTYPE_CONTAINER_EVENT, SPECIALIZED_ITEMTYPE_CONTAINER_STYLE_PAGE}),
+                    {ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY},
+                    {SPECIALIZED_ITEMTYPE_CONTAINER, SPECIALIZED_ITEMTYPE_CONTAINER_CURRENCY, SPECIALIZED_ITEMTYPE_CONTAINER_EVENT, SPECIALIZED_ITEMTYPE_CONTAINER_STYLE_PAGE}, false, false)
+                    or GetFilterCallbackForItemTypeAndSpecializedItemtype(
+                    {ITEMFILTERTYPE_PROVISIONING},
+                    {SPECIALIZED_ITEMTYPE_CONTAINER}, false, true),
             dropdownCallbacks = {},
         },
         Repair = {
@@ -919,7 +927,7 @@ AF.subfilterCallbacks = {
                 {name = "Poison", showIcon=true, filterCallback = GetFilterCallback({ITEMTYPE_POISON}, true)},
                 {name = "Motif", showIcon=true, filterCallback = GetFilterCallback({ITEMTYPE_RACIAL_STYLE_MOTIF}, true)},
                 {name = "Writ", showIcon=true, filterCallback = GetFilterCallback({ITEMTYPE_MASTER_WRIT}, true)},
-                {name = "Container", showIcon=true, filterCallback = GetFilterCallback({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY}, true)},
+                {name = "Container", showIcon=true, filterCallback = GetFilterCallback({ITEMTYPE_CONTAINER, ITEMTYPE_CONTAINER_CURRENCY}, true)} or GetFilterCallbackForSpecializedItemtype({SPECIALIZED_ITEMTYPE_CONTAINER}, true, false),
                 {name = "Repair", showIcon=true, filterCallback = GetFilterCallback({ITEMTYPE_AVA_REPAIR, ITEMTYPE_TOOL, ITEMTYPE_CROWN_REPAIR}, true)},
                 {name = "Trophy", showIcon=true, filterCallback = GetFilterCallbackForTrophy(true)},
             },
