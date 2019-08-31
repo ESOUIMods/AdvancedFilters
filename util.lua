@@ -1465,7 +1465,7 @@ end
 --horizontal list afterwards
 function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipTypes, armorTypes)
     if not horizontalScrollList then return false end
-d("[AF]util.FilterHorizontalScrollList")
+--d("[AF]util.FilterHorizontalScrollList")
     local craftingType = GetCraftingInteractionType()
     if craftingType == CRAFTING_TYPE_INVALID then return false end
     local researchLineListArmorTypes = AF.researchLinesToArmorType[craftingType]
@@ -1564,10 +1564,10 @@ d("[AF]util.FilterHorizontalScrollList")
                     end
                     --FilterType is not allowed? Add it to the skip table
                     if not researchLineIndexIsAllowed then
-d("<<<<skipping researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+--d("<<<<skipping researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                         skipTable[researchLineIndex] = true
                     else
-d(">>>>>adding researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+--d(">>>>>adding researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                     end
                 end
                 --local expectedTypeFilter = ZO_CraftingUtils_GetSmithingFilterFromTrait(GetSmithingResearchLineTraitInfo(craftingType, researchLineIndex, 1)) --returns 2 for weapons and 4 for armor, ? for jewelry
@@ -1602,7 +1602,7 @@ end
 --Check if the research panel is shown and do some special stuff with the horizontal scroll list then.
 --If not: Run the filter function only
 function util.CheckForResearchPanelAndRunFilterFunction(filterFunc, filterOrEquipTypes, armorTypes)
-d("[AF]util.CheckForResearchPanelAndRunFilterFunction")
+--d("[AF]util.CheckForResearchPanelAndRunFilterFunction")
     --If the research panel is shown:
     --Clear the horizontal list and only show the entries which apply to the selected item type
     local researchHorizontalScrollList = AF.controlsForChecks.researchLineList

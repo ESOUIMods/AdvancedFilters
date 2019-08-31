@@ -487,8 +487,7 @@ local function InitializeHooks()
     ZO_PreHook(smithingVar.refinementPanel.inventory, "ChangeFilter",       function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
     ZO_PreHook(smithingVar.deconstructionPanel.inventory, "ChangeFilter",   function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
     ZO_PreHook(smithingVar.improvementPanel.inventory, "ChangeFilter",      function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
-    ZO_PreHook(smithingVar.researchPanel, "ChangeTypeFilter",               function(...)
-        d("[AF]ChangeTypeFilter") delayedCall(10, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.researchPanel, "ChangeTypeFilter",               function(...)delayedCall(10, ChangeFilterCrafting, ...) end)
     ZO_PreHook(retraitVar.retraitPanel.inventory, "ChangeFilter",           function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
 
 
