@@ -248,7 +248,11 @@ function AF_FilterBar:AddSubfilter(groupName, subfilterName)
     }
 --d("[AF_FilterBar:AddSubfilter]groupName: " ..tostring(groupName) .. ", subfilterName: " ..tostring(subfilterName))
     if AF.subfilterCallbacks[groupName] == nil or AF.subfilterCallbacks[groupName][subfilterName] == nil then return nil  end
-    local callback = AF.subfilterCallbacks[groupName][subfilterName].filterCallback
+    local subfilterButtonData = AF.subfilterCallbacks[groupName][subfilterName]
+    local callback = subfilterButtonData.filterCallback
+    local filterResetAtStartDelay = subfilterButtonData.filterResetAtStartDelay
+    local filterStartCallback = subfilterButtonData.filterStartCallback
+    local filterEndCallback = subfilterButtonData.filterEndCallback
 
     local anchorX = -116 + #self.subfilterButtons * -32
 
@@ -294,6 +298,10 @@ function AF_FilterBar:AddSubfilter(groupName, subfilterName)
     button.texture = texture
     button.clickable = true
     button.filterCallback = callback
+    button.filterStartCallback = filterStartCallback
+    button.filterResetAtStartDelay = filterResetAtStartDelay
+    button.filterEndCallback = filterEndCallback
+
     button.up = icon.up
     button.down = icon.down
 

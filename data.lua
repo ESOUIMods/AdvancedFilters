@@ -627,6 +627,7 @@ AF.subfilterCallbacks = {
             dropdownCallbacks = {},
         },
         Neck = {
+            filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, nil), EQUIP_TYPE_NECK, nil)end,
             filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_NECK}),
             dropdownCallbacks = {
                 {name = "Arcane", showIcon=true, addString = "Neck",        filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_ARCANE), EQUIP_TYPE_NECK, nil)end, filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_NECK}, ITEM_TRAIT_TYPE_JEWELRY_ARCANE)},
@@ -643,6 +644,7 @@ AF.subfilterCallbacks = {
             },
         },
         Ring = {
+            filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, nil), EQUIP_TYPE_RING, nil)end,
             filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_RING}),
             dropdownCallbacks = {
                 {name = "Arcane", showIcon=true, addString = "Ring",        filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_ARCANE), EQUIP_TYPE_RING, nil)end, filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_ARCANE)},

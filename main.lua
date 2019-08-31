@@ -499,7 +499,7 @@ local function InitializeHooks()
     ZO_PreHook(smithingVar.refinementPanel.inventory, "ChangeFilter",       function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
     ZO_PreHook(smithingVar.deconstructionPanel.inventory, "ChangeFilter",   function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
     ZO_PreHook(smithingVar.improvementPanel.inventory, "ChangeFilter",      function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
-    ZO_PreHook(smithingVar.researchPanel, "ChangeTypeFilter",               function(...)delayedCall(10, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.researchPanel, "ChangeTypeFilter",               function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
     ZO_PreHook(retraitVar.retraitPanel.inventory, "ChangeFilter",           function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
 
 
@@ -681,6 +681,7 @@ local function InitializeHooks()
             end
             --Show the subfilterbar for the research panel now as the function
             --"ChangeFilterCrafting(self, filterData)" will not be called automatically here
+            util.ClearResearchPanelCustomFilters()
             ChangeFilterCrafting(self.researchPanel)
         end
         return false

@@ -796,10 +796,18 @@ function util.Localize(text)
 end
 
 function util.ThrottledUpdate(callbackName, timer, callback, ...)
-    local args = {...}
+    if not callbackName or callbackName == "" or not callback then return end
+    local args
+    if ... ~= nil then
+        args = {...}
+    end
     local function Update()
         EVENT_MANAGER:UnregisterForUpdate(callbackName)
-        callback(unpack(args))
+        if args then
+            callback(unpack(args))
+        else
+            callback()
+        end
     end
     EVENT_MANAGER:UnregisterForUpdate(callbackName)
     EVENT_MANAGER:RegisterForUpdate(callbackName, timer, Update)
@@ -1462,6 +1470,14 @@ function util.GetListControlForSubfilterBarReanchor(inventory, p_currentFilter, 
     return listControlForSubfilterBarReanchor, moveInvBottomBarDown
 end
 
+--Clear the custom variables used to filter the horizontal scrolling list entries
+function util.ClearResearchPanelCustomFilters()
+    --Reset the custom data for the loop now
+    if controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues then
+        controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues = nil
+    end
+end
+
 --Filter a horizontal scroll list and run a filterFunction given to determine the entries to show in the
 --horizontal list afterwards
 function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
@@ -1593,14 +1609,10 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
                 util.LibFilters:SetResearchLineLoopValues(fromResearchLineIndex, toResearchLineIndex, skipTable)
                 --Refresh -> rebuild and Commit the new list
                 controlsForChecks.researchPanel:Refresh() --> Will rebuild the list entries and call list:Commit()
-                --TODO: Somehow the researchPAnel:Refresh() function is called twice?? WHY???
-                --      Due to this we need to clear the variables delayed!
-                zo_callLater(function()
-                    --Reset the custom data for the loop now
-                    if controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues then
-                        controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues = nil
-                    end
-                end, 1000)
+                --TODO: Somehow the researchPanel:Refresh() function is called twice, except for the "ALL" filter button?? WHY???
+                --      Due to this we need to clear the variables delayed here and cannot do this within LibFilters3 as the 2nd call to Refresh would show
+                --      all entries in the horizontal list again then :-(
+                util.ThrottledUpdate("AF_ClearResearchPanelCustomFilters", 50, util.ClearResearchPanelCustomFilters)
             end
         end
     end
