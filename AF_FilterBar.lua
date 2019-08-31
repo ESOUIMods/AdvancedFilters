@@ -380,38 +380,51 @@ function AF_FilterBar:ActivateButton(newButton)
     --clear old dropdown data
     self.dropdown.m_comboBox.m_sortedItems = {}
     --Get the current LibFilters filterPanelId
+if AF.currentInventoryType == nil then
+d("===============================================")
+d("[AdvancedFilters]AF_FilterBar:ActivateButton: " .. tostring(newButton.name))
+d(">ERROR - currentInventoryType is NIL!")
+d("===============================================")
+end
     local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
     --Get the current's inventory filterType
     local filterType = util.GetCurrentFilterTypeForInventory(self.inventoryType)
---d("[AF]AF_FilterBar:ActivateButton: " .. tostring(newButton.name) .. ", filterPanelId: " ..tostring(filterPanelIdActive))
+if filterPanelIdActive == nil then
+d("===============================================")
+d("[AdvancedFilters]AF_FilterBar:ActivateButton: " .. tostring(newButton.name))
+d(">ERROR - FilterPanelId is NIL!")
+d("===============================================")
+end
     --add new dropdown data
     PopulateDropdown(newButton)
-    --select the first item if there is no previous selection or the setting to remember the last selection is disabled
-    if not AF.settings.rememberFilterDropdownsLastSelection or not newButton.previousDropdownSelection or not newButton.previousDropdownSelection[filterPanelIdActive] then
-        --Select the first entry
-        self.dropdown.m_comboBox:SelectFirstItem()
-        --util.LibFilters:UnregisterFilter(AF_CONST_DROPDOWN_FILTER, filterType)
-        --util.LibFilters:RegisterFilter(AF_CONST_DROPDOWN_FILTER, filterType, filterCallback)
-        --util.LibFilters:RequestUpdate(filterType)
-        newButton.previousDropdownSelection = newButton.previousDropdownSelection or {}
-        newButton.previousDropdownSelection[filterPanelIdActive] = self.dropdown.m_comboBox.m_sortedItems[1]
-    else
-        --restore previous dropdown selection if the settings is enabled for this
-        local previousDropdownSelection = newButton.previousDropdownSelection[filterPanelIdActive]
-        --Check if the previous selection was a right mouse context menu "invert" option
-        if previousDropdownSelection.isInverted then
-            --Reapply the filter of the inversion
-            --local originalCallback = util.LibFilters:GetFilterCallback(AF_CONST_DROPDOWN_FILTER, filterType)
-            local originalCallback = previousDropdownSelection.callback
-            previousDropdownSelection.filterCallback = originalCallback
-            util.ApplyFilter(previousDropdownSelection, AF_CONST_DROPDOWN_FILTER, true, filterType)
-            --Select the dropdown entry but do not call the callback function as the filter was updated above already
-            self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, true)
+    if AF.currentInventoryType and filterPanelIdActive then
+        --select the first item if there is no previous selection or the setting to remember the last selection is disabled
+        if not AF.settings.rememberFilterDropdownsLastSelection or not newButton.previousDropdownSelection or not newButton.previousDropdownSelection[filterPanelIdActive] then
+            --Select the first entry
+            self.dropdown.m_comboBox:SelectFirstItem()
+            --util.LibFilters:UnregisterFilter(AF_CONST_DROPDOWN_FILTER, filterType)
+            --util.LibFilters:RegisterFilter(AF_CONST_DROPDOWN_FILTER, filterType, filterCallback)
+            --util.LibFilters:RequestUpdate(filterType)
+            newButton.previousDropdownSelection = newButton.previousDropdownSelection or {}
+            newButton.previousDropdownSelection[filterPanelIdActive] = self.dropdown.m_comboBox.m_sortedItems[1]
         else
-            if previousDropdownSelection.filterCallback ~= nil then
+            --restore previous dropdown selection if the settings is enabled for this
+            local previousDropdownSelection = newButton.previousDropdownSelection[filterPanelIdActive]
+            --Check if the previous selection was a right mouse context menu "invert" option
+            if previousDropdownSelection.isInverted then
+                --Reapply the filter of the inversion
+                --local originalCallback = util.LibFilters:GetFilterCallback(AF_CONST_DROPDOWN_FILTER, filterType)
+                local originalCallback = previousDropdownSelection.callback
+                previousDropdownSelection.filterCallback = originalCallback
                 util.ApplyFilter(previousDropdownSelection, AF_CONST_DROPDOWN_FILTER, true, filterType)
+                --Select the dropdown entry but do not call the callback function as the filter was updated above already
+                self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, true)
+            else
+                if previousDropdownSelection.filterCallback ~= nil then
+                    util.ApplyFilter(previousDropdownSelection, AF_CONST_DROPDOWN_FILTER, true, filterType)
+                end
+                self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, false)
             end
-            self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, false)
         end
     end
 end

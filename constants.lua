@@ -962,6 +962,10 @@ local researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = {
     },
     [CRAFTING_TYPE_CLOTHIER] = {
     },
+    [CRAFTING_TYPE_JEWELRYCRAFTING] = {
+        [EQUIP_TYPE_NECK]   = 0,
+        [EQUIP_TYPE_RING]   = -1,
+    },
 }
 AF.researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes
 
@@ -1030,7 +1034,6 @@ local clothierResearchLinesArmorTypes = {
     [13]=ARMORTYPE_MEDIUM, --
     [14]=ARMORTYPE_MEDIUM, --
 }
-
 local woodworkingResearchLines = {
     --Weapons
     [1]=WEAPONTYPE_BOW,             -- Bow
@@ -1045,10 +1048,17 @@ local woodworkingResearchLinesArmorType = {
     --Armor
     [6]=ARMORTYPE_NONE,             -- Shield
 }
+local jewelryCraftingResearchLines = {
+    --Neck
+    [1] = EQUIP_TYPE_NECK,
+    --Ring
+    [2] = EQUIP_TYPE_RING,
+}
 AF.researchLinesToFilterTypes = {}
 AF.researchLinesToFilterTypes[CRAFTING_TYPE_BLACKSMITHING]  = blacksmithResearchLines
 AF.researchLinesToFilterTypes[CRAFTING_TYPE_CLOTHIER]       = clothierResearchLines
 AF.researchLinesToFilterTypes[CRAFTING_TYPE_WOODWORKING]    = woodworkingResearchLines
+AF.researchLinesToFilterTypes[CRAFTING_TYPE_JEWELRYCRAFTING]= jewelryCraftingResearchLines
 AF.researchLinesToArmorType = {}
 AF.researchLinesToArmorType[CRAFTING_TYPE_BLACKSMITHING]    = blacksmithResearchLinesArmorType
 AF.researchLinesToArmorType[CRAFTING_TYPE_CLOTHIER]         = clothierResearchLinesArmorTypes

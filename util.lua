@@ -52,16 +52,17 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
     local callback          = button.filterCallback
     local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
     local delay             = 0
+    local buttonName        = button.name
 
---d("[AF]Apply " .. tostring(button.name) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterType) .. " and inventoryType " .. tostring(AF.currentInventoryType))
+--d("[AF]ApplyFilter " .. tostring(buttonName) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterType) .. " and inventoryType " .. tostring(AF.currentInventoryType))
 
     --if something isn't right, abort
     if callback == nil then
-        d("[AdvancedFilters]Callback was nil for \'" .. filterTag .. "\'")
+        d("[AdvancedFilters]ERROR - Callback was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
         return
     end
     if filterTypeToUse == nil then
-        d("[AdvancedFilters]FilterType was nil for \'" .. filterTag .. "\'")
+        d("[AdvancedFilters]ERROR - FilterType was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
         return
     end
 
@@ -1463,7 +1464,7 @@ end
 
 --Filter a horizontal scroll list and run a filterFunction given to determine the entries to show in the
 --horizontal list afterwards
-function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipTypes, armorTypes)
+function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
     if not horizontalScrollList then return false end
 --d("[AF]util.FilterHorizontalScrollList")
     local craftingType = GetCraftingInteractionType()
@@ -1497,7 +1498,7 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
             local researchLineAtCraftingStationToFilterType = AF.researchLinesToFilterTypes[craftingType]
             if researchLineAtCraftingStationToFilterType then
                 for researchLineIndex = 1, toResearchLineIndex do
---d(">researchLineIndex: " ..tostring(researchLineIndex))
+--d(">researchLineIndex: " ..tostring(researchLineIndex) .. ", name: " .. tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                     --Get the current filterType at the researchLineIndex
                     local filterTypeOfResearchLineIndex = researchLineAtCraftingStationToFilterType[researchLineIndex]
                     local researchLineIndexIsAllowed = false
@@ -1506,22 +1507,18 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
                         if type(filterOrEquipTypes) == "table" then
                             for _, filterType in ipairs(filterOrEquipTypes) do
                                 if filterType == filterTypeOfResearchLineIndex then
---d(">>filterType is correct: " ..tostring(filterType) .. ", filterTypeResearchLine: " ..tostring(filterTypeOfResearchLineIndex))
                                     if armorTypes and researchLineListArmorTypes then
                                         local researchLineListArmorType = researchLineListArmorTypes[researchLineIndex]
                                         if researchLineListArmorType then
---d(">>>armorTypeResearchLine: " ..tostring(researchLineListArmorType))
                                             if type(armorTypes) == "table" then
                                                 for _, armorType in ipairs(armorTypes) do
                                                     if armorType == researchLineListArmorType then
---d(">>>>armorType correct!")
                                                         researchLineIndexIsAllowed = true
                                                         break --exit the inner inner armorTypes for .. loop of filterTypes
                                                     end
                                                 end
                                             else
                                                 if armorTypes == researchLineListArmorType then
---d(">>>>armorType correct!!!")
                                                     researchLineIndexIsAllowed = true
                                                 end
                                             end
@@ -1536,22 +1533,18 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
                             end
                         else
                             if filterOrEquipTypes == filterTypeOfResearchLineIndex then
---d(">>!!!filterType is correct: " ..tostring(filterOrEquipTypes) .. ", filterTypeResearchLine: " ..tostring(filterTypeOfResearchLineIndex))
                                 if armorTypes and researchLineListArmorTypes then
                                     local researchLineListArmorType = researchLineListArmorTypes[researchLineIndex]
                                     if researchLineListArmorType then
---d(">>>!!!armorTypeResearchLine: " ..tostring(researchLineListArmorType))
                                         if type(armorTypes) == "table" then
                                             for _, armorType in ipairs(armorTypes) do
                                                 if armorType == researchLineListArmorType then
---d(">>>>!!!armorType correct!")
                                                     researchLineIndexIsAllowed = true
                                                     break --exit the inner inner armorTypes for .. loop of filterTypes
                                                 end
                                             end
                                         else
                                             if armorTypes == researchLineListArmorType then
---d(">>>>!!!armorType correct!!!")
                                                 researchLineIndexIsAllowed = true
                                             end
                                         end
@@ -1559,6 +1552,27 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
                                 else
                                     researchLineIndexIsAllowed = true
                                 end
+                            end
+                        end
+                    end
+                    --Is the researchLineIndex allowed so far because of the matching filterOrEquipType and/or armor type?
+                    if researchLineIndexIsAllowed and traitTypes ~= nil then
+                        local researchLineListTraitType = GetSmithingResearchLineTraitInfo(craftingType, researchLineIndex, 1)
+--d(">researchLine trait: " ..tostring(researchLineListTraitType))
+                        researchLineIndexIsAllowed = false
+                        --Check if the traitTypes are given and mathcing as well
+                        if type(traitTypes) == "table" then
+                            for _, traitType in ipairs(traitTypes) do
+                                if traitType == researchLineListTraitType then
+--d(">found matching trait: " ..tostring(traitType))
+                                    researchLineIndexIsAllowed = true
+                                    break --exit the inner inner traitTypes for .. loop
+                                end
+                            end
+                        else
+                            if traitTypes == researchLineListTraitType then
+--d(">!!!found matching trait: " ..tostring(traitTypes))
+                                researchLineIndexIsAllowed = true
                             end
                         end
                     end
@@ -1601,12 +1615,12 @@ end
 
 --Check if the research panel is shown and do some special stuff with the horizontal scroll list then.
 --If not: Run the filter function only
-function util.CheckForResearchPanelAndRunFilterFunction(filterFunc, filterOrEquipTypes, armorTypes)
+function util.CheckForResearchPanelAndRunFilterFunction(filterFunc, filterOrEquipTypes, armorTypes, traitTypes)
 --d("[AF]util.CheckForResearchPanelAndRunFilterFunction")
     --If the research panel is shown:
     --Clear the horizontal list and only show the entries which apply to the selected item type
     local researchHorizontalScrollList = AF.controlsForChecks.researchLineList
     if researchHorizontalScrollList and researchHorizontalScrollList.control and not researchHorizontalScrollList.control:IsHidden() then
-        util.FilterHorizontalScrollList(researchHorizontalScrollList, filterOrEquipTypes, armorTypes)
+        util.FilterHorizontalScrollList(researchHorizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
     end
 end

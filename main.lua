@@ -109,8 +109,8 @@ function AF.showChatDebug(functionName, chatOutputVars)
 
     --Chat output
     d(">====================================>")
-    d("[AdvancedFilters - ERROR]" .. tostring(functionNameStr))
-    d("!> Please answer the following 4 questions and send the answers (and if given: the variables shown in the lines, starting with ->, after the questions) to the addon's comments of AdvancedFilters @www.esoui.com:\n https://bit.ly/2IlJ56J")
+    d("[AdvancedFilters - |cFF0000ERROR|r]" .. "|c0000F0" .. tostring(functionNameStr) .. "|r")
+    d("!> Please answer the following 4 questions and send the answers (and if given: the variables shown in the lines, starting with ->, after the questions) to the addon's comments of AdvancedFilters @www.esoui.com:\nhttps://bit.ly/2IlJ56J")
     d("1) What did you do?\n2)Where did you do it?\n3)Did you test if the error happenes with only the addon AdvancedFilters UPDATED activated (please test this!)?\n4)If error happens with other addons active: Which other addons were you using as the error happened?")
     if chatOutputVars ~= "" then
         d("-> " .. chatOutputVars)
@@ -339,7 +339,19 @@ local function InitializeHooks()
         end
 
         --Get the new subFilterBar to show
-        local subfilterBar = subfilterGroup[craftingType][currentFilter]
+        local subfilterBarBase = subfilterGroup[craftingType]
+        if subfilterBarBase == nil then
+            showChatDebug("ShowSubfilterBar - SubFilterBarBase missing", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
+            return
+        end
+        local subfilterBar = subfilterBarBase[currentFilter]
+        if subfilterBar == nil then
+            --SubfilterBar is nil but maybe we do not need any like at the inventory quest items?
+            if currentFilter ~= nil and AF.subFiltersBarInactive[currentFilter] == nil then
+                showChatDebug("ShowSubfilterBar - SubFilterBar missing", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
+                return
+            end
+        end
 
         --if new bar exists
         local craftingInv
