@@ -104,7 +104,7 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
                         local newSelectedItem = {}
                         newSelectedItem.filterResetAtStart = currentlySelectedDropdownItem.filterResetAtStart  -- For AF.util.ApplyFilter
                         newSelectedItem.filterResetAtStartDelay = currentlySelectedDropdownItem.filterResetAtStartDelay  -- For AF.util.ApplyFilter
-d("[AF]invertFilter at dropdown-filterResetAtStart: " ..tostring(newSelectedItem.filterResetAtStart) .. ", filterResetAtStartDelay: " ..tostring(currentlySelectedDropdownItem.filterResetAtStartDelay))
+--d("[AF]invertFilter at dropdown-filterResetAtStart: " ..tostring(newSelectedItem.filterResetAtStart) .. ", filterResetAtStartDelay: " ..tostring(currentlySelectedDropdownItem.filterResetAtStartDelay))
 
                         newSelectedItem.filterStartCallback = currentlySelectedDropdownItem.filterStartCallback -- For AF.util.ApplyFilter
                         newSelectedItem.callback = filterCallback
@@ -372,7 +372,7 @@ function AF_FilterBar:ActivateButton(newButton)
     newButton:SetEnabled(false)
 
     --refresh filter
-    util.ApplyFilter(newButton, "AF_ButtonFilter", true)
+    util.ApplyFilter(newButton, AF_CONST_BUTTON_FILTER, true)
 
     --set new active button reference
     self.activeButton = newButton

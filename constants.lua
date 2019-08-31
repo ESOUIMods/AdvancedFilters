@@ -93,6 +93,8 @@ local controlsForChecks = {
     enchanting              = ENCHANTING,
     retrait                 = ZO_RETRAIT_STATION_KEYBOARD, -- needed for the other retrait related filter stuff (hooks, util functions)
 }
+controlsForChecks.researchPanel     =   controlsForChecks.smithing.researchPanel
+controlsForChecks.researchLineList  =   controlsForChecks.researchPanel.researchLineList
 AF.controlsForChecks = controlsForChecks
 
 --Inventories and their searchBox controls
@@ -128,7 +130,8 @@ AF.inventories = inventories
 --Constant for the "All" subfilters
 AF_CONST_ALL = 'All'
 --Constant for the dropdown filter box LibFilters filter
-AF_CONST_DROPDOWN_FILTER = "AF_DropdownFilter"
+AF_CONST_BUTTON_FILTER      = "AF_ButtonFilter"
+AF_CONST_DROPDOWN_FILTER    = "AF_DropdownFilter"
 
 --New defined vendor buy inventory type
 INVENTORY_TYPE_VENDOR_BUY = 900
@@ -155,7 +158,7 @@ local itemFilterTypesDefinedForAdvancedFilters = {
     --ITEMFILTERTYPE_AF_CREATE_WEAPONS_WOODWORKING    = 0,
     --ITEMFILTERTYPE_AF_CREATE_JEWELRY                = 0,
     ITEMFILTERTYPE_AF_RUNES_ENCHANTING              = 0,
-    --Deconstruct / Improve
+    --Deconstruct / Improve / Research
     ITEMFILTERTYPE_AF_ARMOR_CLOTHIER                = 0,
     ITEMFILTERTYPE_AF_ARMOR_SMITHING                = 0,
     ITEMFILTERTYPE_AF_ARMOR_WOODWORKING             = 0,
@@ -181,14 +184,16 @@ local inventoryNames = {
     [INVENTORY_GUILD_BANK]      = "GuildBank",
     [INVENTORY_CRAFT_BAG]       = "CraftBag",
     [INVENTORY_TYPE_VENDOR_BUY] = "VendorBuy",
-    --[LF_SMITHING_CREATION]      = "SmithingCreate",
+    [LF_SMITHING_CREATION]      = "SmithingCreate",
     [LF_SMITHING_REFINE]        = "SmithingRefine",
     [LF_SMITHING_DECONSTRUCT]   = "SmithingDeconstruction",
     [LF_SMITHING_IMPROVEMENT]   = "SmithingImprovement",
-    --[LF_JEWELRY_CREATION]       = "JewelryCraftingCreate",
+    [LF_SMITHING_RESEARCH]      = "SmithingResearch",
+    [LF_JEWELRY_CREATION]       = "JewelryCraftingCreate",
     [LF_JEWELRY_REFINE]         = "JewelryCraftingRefine",
     [LF_JEWELRY_DECONSTRUCT]    = "JewelryCraftingDeconstruction",
     [LF_JEWELRY_IMPROVEMENT]    = "JewelryCraftingImprovement",
+    [LF_JEWELRY_RESEARCH]       = "JewelryCraftingResearch",
     [LF_ENCHANTING_CREATION]    = "EnchantingCreation",
     [LF_ENCHANTING_EXTRACTION]  = "EnchantingExtraction",
     [INVENTORY_HOUSE_BANK]      = "HouseBankWithdraw",
@@ -431,6 +436,24 @@ local subfilterGroups = {
         },
     },
 
+    --Crafting SMITHING: Research
+    [LF_SMITHING_RESEARCH] = {
+        [CRAFTING_TYPE_BLACKSMITHING] = {
+            [ITEMFILTERTYPE_ALL] = {},
+            [ITEMFILTERTYPE_AF_WEAPONS_SMITHING] = {},
+            [ITEMFILTERTYPE_AF_ARMOR_SMITHING] = {},
+        },
+        [CRAFTING_TYPE_WOODWORKING] = {
+            [ITEMFILTERTYPE_ALL] = {},
+            [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING] = {},
+            [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING] = {},
+        },
+        [CRAFTING_TYPE_CLOTHIER] = {
+            [ITEMFILTERTYPE_ALL] = {},
+            [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER] = {},
+        },
+    },
+
     --Crafting JEWELRY: Create
     --[[
     [LF_JEWELRY_CREATION] = {
@@ -458,6 +481,14 @@ local subfilterGroups = {
     },
     --Crafting JEWELRY: Improvement
     [LF_JEWELRY_IMPROVEMENT] = {
+        [CRAFTING_TYPE_JEWELRYCRAFTING] = {
+            [ITEMFILTERTYPE_ALL] = {},
+            [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING] = {},
+        },
+    },
+
+    --Crafting JEWELRY: Research
+    [LF_JEWELRY_RESEARCH] = {
         [CRAFTING_TYPE_JEWELRYCRAFTING] = {
             [ITEMFILTERTYPE_ALL] = {},
             [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING] = {},
@@ -516,10 +547,12 @@ local filterBarParents = {
     [inventoryNames[LF_SMITHING_REFINE]]        = controlsForChecks.smithing.refinementPanel.control,
     [inventoryNames[LF_SMITHING_DECONSTRUCT]]   = controlsForChecks.smithing.deconstructionPanel.control,
     [inventoryNames[LF_SMITHING_IMPROVEMENT]]   = controlsForChecks.smithing.improvementPanel.control,
+    [inventoryNames[LF_SMITHING_RESEARCH]]      = controlsForChecks.smithing.researchPanel.control,
     --[inventoryNames[LF_JEWELRY_CREATION]]       = controlsForChecks.smithing.creationPanel.control,
     [inventoryNames[LF_JEWELRY_REFINE]]         = controlsForChecks.smithing.refinementPanel.control,
     [inventoryNames[LF_JEWELRY_DECONSTRUCT]]    = controlsForChecks.smithing.deconstructionPanel.control,
     [inventoryNames[LF_JEWELRY_IMPROVEMENT]]    = controlsForChecks.smithing.improvementPanel.control,
+    [inventoryNames[LF_JEWELRY_RESEARCH]]       = controlsForChecks.smithing.researchPanel.control,
     [inventoryNames[LF_ENCHANTING_CREATION]]    = controlsForChecks.enchanting.inventoryControl,
     [inventoryNames[LF_ENCHANTING_EXTRACTION]]  = controlsForChecks.enchanting.inventoryControl,
     [inventoryNames[INVENTORY_HOUSE_BANK]]      = controlsForChecks.houseBank,
@@ -889,3 +922,134 @@ local craftBagFilterGroups = {
     filterTypeNames[ITEMFILTERTYPE_JEWELRYCRAFTING],
 }
 AF.craftBagFilterGroups = craftBagFilterGroups
+
+--The list controls for the reanchoring of subfilter bars
+local listControlForSubfilterBarReanchor = {
+    [LF_SMITHING_RESEARCH]  =
+    {
+        control                 = ZO_SmithingTopLevelResearchPanelResearchLineList,
+        moveInvBottomBarDown    = ZO_SmithingTopLevelResearchPanelInfoBar,
+    },
+    [LF_JEWELRY_RESEARCH]   =
+    {
+        control                 = ZO_SmithingTopLevelResearchPanelResearchLineList,
+        moveInvBottomBarDown    = ZO_SmithingTopLevelResearchPanelInfoBar,
+    },
+}
+AF.listControlForSubfilterBarReanchor = listControlForSubfilterBarReanchor
+
+--The indices of the research horizontal scrollList for the different weapontypes
+local researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = {
+    [CRAFTING_TYPE_BLACKSMITHING] = {
+        --1hd
+        [WEAPONTYPE_AXE]                = 0,
+        [WEAPONTYPE_HAMMER]             = -1,
+        [WEAPONTYPE_SWORD]              = -2,
+        [WEAPONTYPE_DAGGER]             = -6,
+        --2hd
+        [WEAPONTYPE_TWO_HANDED_AXE]     = -3,
+        [WEAPONTYPE_TWO_HANDED_HAMMER]  = -4,
+        [WEAPONTYPE_TWO_HANDED_SWORD]   = -5,
+    },
+    [CRAFTING_TYPE_WOODWORKING] = {
+        --2hd bow
+        [WEAPONTYPE_BOW]                = 0,
+        --2hd staffs
+        [WEAPONTYPE_FIRE_STAFF]         = -1,
+        [WEAPONTYPE_FROST_STAFF]        = -2,
+        [WEAPONTYPE_LIGHTNING_STAFF]    = -3,
+        [WEAPONTYPE_HEALING_STAFF]      = -4,
+    },
+    [CRAFTING_TYPE_CLOTHIER] = {
+    },
+}
+AF.researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes
+
+--The possible research lines and their item filter types
+local blacksmithResearchLines = {
+    --Weapons
+    [1]=WEAPONTYPE_AXE, --
+    [2]=WEAPONTYPE_HAMMER, --
+    [3]=WEAPONTYPE_SWORD, --
+    [4]=WEAPONTYPE_TWO_HANDED_AXE, --
+    [5]=WEAPONTYPE_TWO_HANDED_HAMMER, --
+    [6]=WEAPONTYPE_TWO_HANDED_SWORD, --
+    [7]=WEAPONTYPE_DAGGER, --
+    --Armor
+    [8]=EQUIP_TYPE_CHEST, --
+    [9]=EQUIP_TYPE_FEET, --
+    [10]=EQUIP_TYPE_HAND, --
+    [11]=EQUIP_TYPE_HEAD, --
+    [12]=EQUIP_TYPE_LEGS, --
+    [13]=EQUIP_TYPE_SHOULDERS, --
+    [14]=EQUIP_TYPE_WAIST, --
+}
+local blacksmithResearchLinesArmorType = {
+    --Armor
+    [8]=ARMORTYPE_HEAVY, --
+    [9]=ARMORTYPE_HEAVY, --
+    [10]=ARMORTYPE_HEAVY, --
+    [11]=ARMORTYPE_HEAVY, --
+    [12]=ARMORTYPE_HEAVY, --
+    [13]=ARMORTYPE_HEAVY, --
+    [14]=ARMORTYPE_HEAVY, --
+}
+local clothierResearchLines = {
+    --Light armor
+    [1]=EQUIP_TYPE_CHEST, --
+    [2]=EQUIP_TYPE_FEET, --
+    [3]=EQUIP_TYPE_HAND, --
+    [4]=EQUIP_TYPE_HEAD, --
+    [5]=EQUIP_TYPE_LEGS, --
+    [6]=EQUIP_TYPE_SHOULDERS, --
+    [7]=EQUIP_TYPE_WAIST, --
+    --Medium armor
+    [8]=EQUIP_TYPE_CHEST, --
+    [9]=EQUIP_TYPE_FEET, --
+    [10]=EQUIP_TYPE_HAND, --
+    [11]=EQUIP_TYPE_HEAD, --
+    [12]=EQUIP_TYPE_LEGS, --
+    [13]=EQUIP_TYPE_SHOULDERS, --
+    [14]=EQUIP_TYPE_WAIST, --
+}
+local clothierResearchLinesArmorTypes = {
+    --Light Armor
+    [1]=ARMORTYPE_LIGHT, --
+    [2]=ARMORTYPE_LIGHT, --
+    [3]=ARMORTYPE_LIGHT, --
+    [4]=ARMORTYPE_LIGHT, --
+    [5]=ARMORTYPE_LIGHT, --
+    [6]=ARMORTYPE_LIGHT, --
+    [7]=ARMORTYPE_LIGHT, --
+    --Medium armor
+    [8]=ARMORTYPE_MEDIUM, --
+    [9]=ARMORTYPE_MEDIUM, --
+    [10]=ARMORTYPE_MEDIUM, --
+    [11]=ARMORTYPE_MEDIUM, --
+    [12]=ARMORTYPE_MEDIUM, --
+    [13]=ARMORTYPE_MEDIUM, --
+    [14]=ARMORTYPE_MEDIUM, --
+}
+
+local woodworkingResearchLines = {
+    --Weapons
+    [1]=WEAPONTYPE_BOW,             -- Bow
+    [2]=WEAPONTYPE_FIRE_STAFF,      -- Fire staff
+    [3]=WEAPONTYPE_FROST_STAFF,     -- Ice staff
+    [4]=WEAPONTYPE_LIGHTNING_STAFF, -- Lightning staff
+    [5]=WEAPONTYPE_HEALING_STAFF,   -- Heal staff
+    --Armor
+    [6]=EQUIP_TYPE_OFF_HAND,        -- Shield
+}
+local woodworkingResearchLinesArmorType = {
+    --Armor
+    [6]=ARMORTYPE_NONE,             -- Shield
+}
+AF.researchLinesToFilterTypes = {}
+AF.researchLinesToFilterTypes[CRAFTING_TYPE_BLACKSMITHING]  = blacksmithResearchLines
+AF.researchLinesToFilterTypes[CRAFTING_TYPE_CLOTHIER]       = clothierResearchLines
+AF.researchLinesToFilterTypes[CRAFTING_TYPE_WOODWORKING]    = woodworkingResearchLines
+AF.researchLinesToArmorType = {}
+AF.researchLinesToArmorType[CRAFTING_TYPE_BLACKSMITHING]    = blacksmithResearchLinesArmorType
+AF.researchLinesToArmorType[CRAFTING_TYPE_CLOTHIER]         = clothierResearchLinesArmorTypes
+AF.researchLinesToArmorType[CRAFTING_TYPE_WOODWORKING]      = woodworkingResearchLinesArmorType

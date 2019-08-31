@@ -82,6 +82,13 @@ local GetInventoryFromCraftingPanel         = util.GetInventoryFromCraftingPanel
 local IsCraftingStationInventoryType        = util.IsCraftingStationInventoryType
 local IsCraftingPanelShown                  = util.IsCraftingPanelShown
 
+local function delayedCall(delay, functionToCall, params)
+    if functionToCall then
+        delay = delay or 0
+        zo_callLater(function() functionToCall(params) end, delay)
+    end
+end
+
 function AF.showChatDebug(functionName, chatOutputVars)
     local functionNameStr = tostring(functionName) or "n/a"
     functionNameStr = " " .. functionNameStr
@@ -208,7 +215,7 @@ local function InitializeHooks()
         --CraftBag
         if AF.currentInventoryType == INVENTORY_CRAFT_BAG then
             local afCBCurrentFilter = AF.craftBagCurrentFilter
-            --d("[AF]ShowSubfilterBar craftbag, currentFilter: " .. tostring(currentFilter) .. ", afCBCurrentFilter: " .. tostring(afCBCurrentFilter))
+--d("[AF]ShowSubfilterBar craftbag, currentFilter: " .. tostring(currentFilter) .. ", afCBCurrentFilter: " .. tostring(afCBCurrentFilter))
             if afCBCurrentFilter and afCBCurrentFilter ~= ITEMFILTERTYPE_ALL and afCBCurrentFilter == currentFilter then
                 --Set prevention variable for function ShowSubfilterBar at the craftbag.
 
@@ -237,18 +244,36 @@ local function InitializeHooks()
             end
         ]]
         --Update the y offsetts in pixels for the subfilter bar, so it is shown below the parent's filter buttons
-        local function UpdateListAnchors(self, shiftY)
+        local function UpdateListAnchors(self, shiftY, p_currentFilter, p_craftingType, p_subFilterBar)
             --d(">UpdateListAnchors - shiftY: " .. tostring(shiftY))
             if self == nil then return end
             local layoutData = self.appliedLayout or BACKPACK_DEFAULT_LAYOUT_FRAGMENT.layoutData
             if not layoutData then return end
-            local list = self.list or self.inventories[AF.currentInventoryType].listView
-            list:SetWidth(layoutData.width)
-            list:ClearAnchors()
-            list:SetAnchor(TOPRIGHT, nil, TOPRIGHT, 0, layoutData.backpackOffsetY + shiftY)
-            list:SetAnchor(BOTTOMRIGHT)
-
-            ZO_ScrollList_SetHeight(list, list:GetHeight())
+            local list = self.list or (self.inventories ~= nil and self.inventories[AF.currentInventoryType].listView)
+            if not list then
+                local moveInvBottomBarDown
+                local anchorTo = (p_subFilterBar and p_subFilterBar.control) or nil
+                list, moveInvBottomBarDown = util.GetListControlForSubfilterBarReanchor(self, p_currentFilter, p_craftingType)
+                if not list then return end
+                list:SetWidth(layoutData.width)
+                list:ClearAnchors()
+                list:SetAnchor(TOPLEFT, anchorTo, BOTTOMLEFT, 0, 0)
+                --Move the inventory's bottom bar more down?
+                if moveInvBottomBarDown then
+                    --Do not move the bar if the addon PerfectPixel is active as it was moved already
+                    if not PP then
+                        moveInvBottomBarDown:ClearAnchors()
+                        moveInvBottomBarDown:SetAnchor(TOPLEFT, list:GetParent(), BOTTOMLEFT, 0, shiftY)
+                        moveInvBottomBarDown:SetAnchor(BOTTOMRIGHT)
+                    end
+                end
+            else
+                list:SetWidth(layoutData.width)
+                list:ClearAnchors()
+                list:SetAnchor(TOPRIGHT, nil, TOPRIGHT, 0, layoutData.backpackOffsetY + shiftY)
+                list:SetAnchor(BOTTOMRIGHT)
+                ZO_ScrollList_SetHeight(list, list:GetHeight())
+            end
 
             local sortBy = self.sortHeaders or self.sortHeaderGroup
             if sortBy == nil and self.GetDisplayInventoryTable then sortBy = self:GetDisplayInventoryTable(AF.currentInventoryType).sortHeaders end
@@ -256,6 +281,9 @@ local function InitializeHooks()
             sortBy = sortBy.headerContainer
             sortBy:ClearAnchors()
             sortBy:SetAnchor(TOPRIGHT, nil, TOPRIGHT, 0, layoutData.sortByOffsetY + shiftY)
+
+            --Should something else be moved or re-anchored (e.g. at the research panel the horizontal scroll list part)
+            --AF.util.ReAnchorControlsForSubfilterBar(self, shiftY, p_currentFilter, p_craftingType)
         end
         --Error handling: Hiding old subfilter bar
         -- e.g. for missing variables, or if other addons might have changed the currentFilter or currentInventoryType (indirectly by their stuff -> loadtime was increased -> filter change did not happen in time for AF due to this)
@@ -335,12 +363,11 @@ local function InitializeHooks()
             subfilterBar:SetHidden(false)
             --set proper inventory anchor displacement
             if subfilterBar.inventoryType == INVENTORY_TYPE_VENDOR_BUY then
-                UpdateListAnchors(STORE_WINDOW, subfilterBar.control:GetHeight())
+                UpdateListAnchors(STORE_WINDOW, subfilterBar.control:GetHeight(), currentFilter, craftingType, subfilterBar)
             elseif isCraftingInventoryType then
-                --d("> UpdateListAnchors - Crafting")
-                UpdateListAnchors(craftingInv, subfilterBar.control:GetHeight())
+                UpdateListAnchors(craftingInv, subfilterBar.control:GetHeight(), currentFilter, craftingType, subfilterBar)
             else
-                UpdateListAnchors(PLAYER_INVENTORY, subfilterBar.control:GetHeight())
+                UpdateListAnchors(PLAYER_INVENTORY, subfilterBar.control:GetHeight(), currentFilter, craftingType, subfilterBar)
             end
         else
             --Crafting
@@ -358,11 +385,11 @@ local function InitializeHooks()
             util.RemoveAllFilters()
             --set original inventory anchor displacement
             if AF.currentInventoryType == INVENTORY_TYPE_VENDOR_BUY then
-                UpdateListAnchors(STORE_WINDOW, 0)
+                UpdateListAnchors(STORE_WINDOW, 0, currentFilter, craftingType)
             elseif isCraftingInventoryType then
-                UpdateListAnchors(craftingInv, 0)
+                UpdateListAnchors(craftingInv, 0, currentFilter, craftingType)
             else
-                UpdateListAnchors(PLAYER_INVENTORY, 0)
+                UpdateListAnchors(PLAYER_INVENTORY, 0, currentFilter, craftingType)
             end
             --remove current bar reference
             subfilterGroup.currentSubfilterBar = nil
@@ -374,6 +401,118 @@ local function InitializeHooks()
             end
         end
     end
+
+------------------------------------------------------------------------------------------------------------------------
+    --PREHOOKS
+    --Filter changing function for normal inventories
+    --Recognizes if a button like armor/weapons/material/... was changed at the inventory (which is a filter change internally)
+    local function ChangeFilterInventory(self, filterTab)
+        --CraftBag
+        if AF.currentInventoryType == INVENTORY_CRAFT_BAG and AF.blockOnInventoryFilterChangedPreHookForCraftBag then
+            --d("[AF]PLAYER_INVENTORY:ChangeFilter, CraftBag: PreHook is blocked. ABORT!")
+            AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
+            return false
+        end
+        --AF.filterTab = filterTab
+        local tabInvType = filterTab.inventoryType
+        local currentFilter = self:GetTabFilterInfo(tabInvType, filterTab)
+        --d("[AF]PLAYER_INVENTORY:ChangeFilter, tabInvType: " ..tostring(tabInvType) .. ", curInvType: " .. tostring(AF.currentInventoryType) .. ", currentFilter: " .. tostring(currentFilter))
+        if AF.currentInventoryType ~= INVENTORY_TYPE_VENDOR_BUY then
+            ThrottledUpdate("ShowSubfilterBar" .. AF.currentInventoryType, 10, ShowSubfilterBar, currentFilter)
+        end
+        --Update the total count for quest items as there are no epxlicit filterBars available until today!
+        local inactiveSubFilterBarInventoryType = AF.subFiltersBarInactive[currentFilter] or nil
+        if inactiveSubFilterBarInventoryType ~= nil and inactiveSubFilterBarInventoryType ~= false then
+            --d(">inactiveSubFilterBarInventoryType: " ..tostring(inactiveSubFilterBarInventoryType) .. ", curInvType: " .. tostring(AF.currentInventoryType) .. ", tabInvType: " ..tostring(tabInvType))
+            --Compare the inventory tab's inventoryType with the inactive inventoryType, and
+            --set the inventory to update accordingly
+            local invType
+            if tabInvType == inactiveSubFilterBarInventoryType then
+                invType = inactiveSubFilterBarInventoryType
+            else
+                invType = AF.currentInventoryType
+            end
+            --Update the count of filtered/shown items in the inventory FreeSlot label
+            --Delay this function call as the data needs to be filtered first!
+            ThrottledUpdate("RefreshItemCount_" .. invType,
+                    50, util.updateInventoryInfoBarCountLabel, invType, false)
+        end
+    end
+    ZO_PreHook(PLAYER_INVENTORY, "ChangeFilter", ChangeFilterInventory)
+
+    --[[
+    --  Seems to not be needed anymore here as the normal inventory's function ChangeFilter is executed for "vendor sell" panels!
+        local function ChangeFilterVendor(self, filterTab)
+    --d("[AF]ChangeFilterVendor")
+            local currentFilter = filterTab.filterType
+            if CheckIfNoSubfilterBarShouldBeShown(currentFilter) then return end
+
+            ThrottledUpdate("ShowSubfilterBar" .. tostring(INVENTORY_TYPE_VENDOR_BUY), 10, ShowSubfilterBar,
+              currentFilter)
+            local invType = INVENTORY_TYPE_VENDOR_BUY -- AF.currentInventoryType
+            local subfilterGroup = AF.subfilterGroups[invType]
+            if not subfilterGroup then return end
+            local craftingType = GetCraftingType()
+            local currentSubfilterBar = subfilterGroup.currentSubfilterBar
+            if not currentSubfilterBar then return end
+
+            ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
+              RefreshSubfilterBar, currentSubfilterBar)
+    end
+    ZO_PreHook(STORE_WINDOW, "ChangeFilter", ChangeFilterVendor)
+    ]]
+
+    --Filter changing function for crafting stations and retrait station.
+    --Recognizes if a button like armor/weapons was changed at the crafting station (which is a filter change internally)
+    local function ChangeFilterCrafting(self, filterData)
+        local invType = AF.currentInventoryType
+        local craftingType = GetCraftingType()
+        local filter = self.filterType or self.typeFilter
+        local currentFilter = util.MapCraftingStationFilterType2ItemFilterType(filter, invType, craftingType)
+--d("[AF]ChangeFilterCrafting, invType: " .. tostring(invType) .. ", craftingType: " .. tostring(craftingType) .. ", filterType: " ..  tostring(filter) .. ", currentFilter: " .. tostring(currentFilter))
+
+        ThrottledUpdate("ShowSubfilterBar" .. invType .. "_" .. craftingType, 10,
+                ShowSubfilterBar, currentFilter, craftingType)
+
+        local subfilterGroup = AF.subfilterGroups[invType]
+        if not subfilterGroup then return end
+        zo_callLater(function()
+            local currentSubfilterBar = subfilterGroup.currentSubfilterBar
+            if not currentSubfilterBar then return end
+            ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
+                    RefreshSubfilterBar, currentSubfilterBar)
+        end, 50)
+    end
+    --ZO_PreHook(smithingVar.creationPanel, "ChangeTypeFilter", changeFilterCraftingNew)
+    ZO_PreHook(smithingVar.refinementPanel.inventory, "ChangeFilter",       function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.deconstructionPanel.inventory, "ChangeFilter",   function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.improvementPanel.inventory, "ChangeFilter",      function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.researchPanel, "ChangeTypeFilter",               function(...)
+        d("[AF]ChangeTypeFilter") delayedCall(10, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(retraitVar.retraitPanel.inventory, "ChangeFilter",           function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
+
+
+    local function ChangeFilterEnchanting(self, filterTab)
+        zo_callLater(function()
+            local invType = AF.currentInventoryType
+            local craftingType = GetCraftingType()
+            local currentFilter = util.MapCraftingStationFilterType2ItemFilterType(self.owner.enchantingMode, invType, craftingType)
+            --d("[AF]ChangeFilterEnchanting - currentFilter: " ..tostring(currentFilter) .. ", currentInventoryType: " .. tostring(invType) .. ", craftingType: " ..tostring(craftingType))
+            --Only show subfilters at the enchanting extraction panel
+            ThrottledUpdate("ShowSubfilterBar" .. invType .. "_" .. craftingType, 10,
+                    ShowSubfilterBar, currentFilter, craftingType)
+            zo_callLater(function()
+                local subfilterGroup = AF.subfilterGroups[invType]
+                if not subfilterGroup then return end
+                local currentSubfilterBar = subfilterGroup.currentSubfilterBar
+                if not currentSubfilterBar then return end
+                ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
+                        RefreshSubfilterBar, currentSubfilterBar)
+            end, 50)
+        end, 10) -- called with small delay, otherwise self.filterType is nil
+    end
+    ZO_PreHook(enchantingVar.inventory, "ChangeFilter", ChangeFilterEnchanting)
+
 
     --FRAGMENT HOOKS
     local function hookFragment(fragment, inventoryType)
@@ -523,6 +662,15 @@ local function InitializeHooks()
             else
                 AF.currentInventoryType = LF_SMITHING_IMPROVEMENT
             end
+        elseif mode == SMITHING_MODE_RESEARCH then
+            if isJewelryCrafting then
+                AF.currentInventoryType = LF_JEWELRY_RESEARCH
+            else
+                AF.currentInventoryType = LF_SMITHING_RESEARCH
+            end
+            --Show the subfilterbar for the research panel now as the function
+            --"ChangeFilterCrafting(self, filterData)" will not be called automatically here
+            ChangeFilterCrafting(self.researchPanel)
         end
         return false
     end
@@ -593,116 +741,6 @@ local function InitializeHooks()
         origRetraitSetMode(...)
         HookRetraitSetMode(...)
     end
-
-    --PREHOOKS
-    --Filter changing function for normal inventories
-    --Recognizes if a button like armor/weapons/material/... was changed at the inventory (which is a filter change internally)
-    local function ChangeFilterInventory(self, filterTab)
-        --CraftBag
-        if AF.currentInventoryType == INVENTORY_CRAFT_BAG and AF.blockOnInventoryFilterChangedPreHookForCraftBag then
-            --d("[AF]PLAYER_INVENTORY:ChangeFilter, CraftBag: PreHook is blocked. ABORT!")
-            AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
-            return false
-        end
-        --AF.filterTab = filterTab
-        local tabInvType = filterTab.inventoryType
-        local currentFilter = self:GetTabFilterInfo(tabInvType, filterTab)
-        --d("[AF]PLAYER_INVENTORY:ChangeFilter, tabInvType: " ..tostring(tabInvType) .. ", curInvType: " .. tostring(AF.currentInventoryType) .. ", currentFilter: " .. tostring(currentFilter))
-        if AF.currentInventoryType ~= INVENTORY_TYPE_VENDOR_BUY then
-            ThrottledUpdate("ShowSubfilterBar" .. AF.currentInventoryType, 10, ShowSubfilterBar, currentFilter)
-        end
-        --Update the total count for quest items as there are no epxlicit filterBars available until today!
-        local inactiveSubFilterBarInventoryType = AF.subFiltersBarInactive[currentFilter] or nil
-        if inactiveSubFilterBarInventoryType ~= nil and inactiveSubFilterBarInventoryType ~= false then
-            --d(">inactiveSubFilterBarInventoryType: " ..tostring(inactiveSubFilterBarInventoryType) .. ", curInvType: " .. tostring(AF.currentInventoryType) .. ", tabInvType: " ..tostring(tabInvType))
-            --Compare the inventory tab's inventoryType with the inactive inventoryType, and
-            --set the inventory to update accordingly
-            local invType
-            if tabInvType == inactiveSubFilterBarInventoryType then
-                invType = inactiveSubFilterBarInventoryType
-            else
-                invType = AF.currentInventoryType
-            end
-            --Update the count of filtered/shown items in the inventory FreeSlot label
-            --Delay this function call as the data needs to be filtered first!
-            ThrottledUpdate("RefreshItemCount_" .. invType,
-                    50, util.updateInventoryInfoBarCountLabel, invType, false)
-        end
-    end
-    ZO_PreHook(PLAYER_INVENTORY, "ChangeFilter", ChangeFilterInventory)
-
-    --[[
-    --  Seems to not be needed anymore here as the normal inventory's function ChangeFilter is executed for "vendor sell" panels!
-        local function ChangeFilterVendor(self, filterTab)
-    --d("[AF]ChangeFilterVendor")
-            local currentFilter = filterTab.filterType
-            if CheckIfNoSubfilterBarShouldBeShown(currentFilter) then return end
-
-            ThrottledUpdate("ShowSubfilterBar" .. tostring(INVENTORY_TYPE_VENDOR_BUY), 10, ShowSubfilterBar,
-              currentFilter)
-            local invType = INVENTORY_TYPE_VENDOR_BUY -- AF.currentInventoryType
-            local subfilterGroup = AF.subfilterGroups[invType]
-            if not subfilterGroup then return end
-            local craftingType = GetCraftingType()
-            local currentSubfilterBar = subfilterGroup.currentSubfilterBar
-            if not currentSubfilterBar then return end
-
-            ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
-              RefreshSubfilterBar, currentSubfilterBar)
-    end
-    ZO_PreHook(STORE_WINDOW, "ChangeFilter", ChangeFilterVendor)
-    ]]
-
-    --Filter changing function for crafting stations and retrait station.
-    --Recognizes if a button like armor/weapons was changed at the crafting station (which is a filter change internally)
-    local function ChangeFilterCrafting(self, filterTab)
-        zo_callLater(function()
-            local invType = AF.currentInventoryType
-            local craftingType = GetCraftingType()
-            local filter = self.filterType or self.typeFilter
-            local currentFilter = util.MapCraftingStationFilterType2ItemFilterType(filter, invType, craftingType)
-            --d("[AF]ChangeFilterCrafting, invType: " .. tostring(invType) .. ", craftingType: " .. tostring(craftingType) .. ", filterType: " ..  tostring(filter) .. ", currentFilter: " .. tostring(currentFilter))
-
-            ThrottledUpdate("ShowSubfilterBar" .. invType .. "_" .. craftingType, 10,
-                    ShowSubfilterBar, currentFilter, craftingType)
-
-            local subfilterGroup = AF.subfilterGroups[invType]
-            if not subfilterGroup then return end
-            zo_callLater(function()
-                local currentSubfilterBar = subfilterGroup.currentSubfilterBar
-                if not currentSubfilterBar then return end
-                ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
-                        RefreshSubfilterBar, currentSubfilterBar)
-            end, 50)
-        end, 10) -- called with small delay, otherwise self.filterType is nil
-    end
-    --ZO_PreHook(smithingVar.creationPanel, "ChangeTypeFilter", changeFilterCraftingNew)
-    ZO_PreHook(smithingVar.refinementPanel.inventory, "ChangeFilter", ChangeFilterCrafting)
-    ZO_PreHook(smithingVar.deconstructionPanel.inventory, "ChangeFilter", ChangeFilterCrafting)
-    ZO_PreHook(smithingVar.improvementPanel.inventory, "ChangeFilter", ChangeFilterCrafting)
-    ZO_PreHook(retraitVar.retraitPanel.inventory, "ChangeFilter", ChangeFilterCrafting)
-
-
-    local function ChangeFilterEnchanting(self, filterTab)
-        zo_callLater(function()
-            local invType = AF.currentInventoryType
-            local craftingType = GetCraftingType()
-            local currentFilter = util.MapCraftingStationFilterType2ItemFilterType(self.owner.enchantingMode, invType, craftingType)
-            --d("[AF]ChangeFilterEnchanting - currentFilter: " ..tostring(currentFilter) .. ", currentInventoryType: " .. tostring(invType) .. ", craftingType: " ..tostring(craftingType))
-            --Only show subfilters at the enchanting extraction panel
-            ThrottledUpdate("ShowSubfilterBar" .. invType .. "_" .. craftingType, 10,
-                    ShowSubfilterBar, currentFilter, craftingType)
-            zo_callLater(function()
-                local subfilterGroup = AF.subfilterGroups[invType]
-                if not subfilterGroup then return end
-                local currentSubfilterBar = subfilterGroup.currentSubfilterBar
-                if not currentSubfilterBar then return end
-                ThrottledUpdate("RefreshSubfilterBar" .. invType .. "_" .. craftingType .. currentSubfilterBar.name, 10,
-                        RefreshSubfilterBar, currentSubfilterBar)
-            end, 50)
-        end, 10) -- called with small delay, otherwise self.filterType is nil
-    end
-    ZO_PreHook(enchantingVar.inventory, "ChangeFilter", ChangeFilterEnchanting)
 
     --Overwrite the standard inventory update function for the used slots/totla slots
     local function hookInventoryInfoBar()
@@ -909,6 +947,7 @@ local function PresetCraftingStationHookVariables()
     smithingVar.refinementPanel.inventory.currentFilter     = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_REFINE_SMITHING,        LF_SMITHING_REFINE,         CRAFTING_TYPE_BLACKSMITHING)
     smithingVar.deconstructionPanel.inventory.currentFilter = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_WEAPONS_SMITHING,       LF_SMITHING_DECONSTRUCT,    CRAFTING_TYPE_BLACKSMITHING)
     smithingVar.improvementPanel.inventory.currentFilter    = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_WEAPONS_SMITHING,       LF_SMITHING_IMPROVEMENT,    CRAFTING_TYPE_BLACKSMITHING)
+    smithingVar.researchPanel.currentFilter                 = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_WEAPONS_SMITHING,       LF_SMITHING_RESEARCH,       CRAFTING_TYPE_BLACKSMITHING)
     enchantingVar.inventory.currentFilter                   = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_GLYPHS_ENCHANTING,      LF_ENCHANTING_EXTRACTION,   CRAFTING_TYPE_ENCHANTING)
     retraitVar.retraitPanel.inventory.currentFilter         = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_RETRAIT,                LF_RETRAIT,                 CRAFTING_TYPE_INVALID)
 end
@@ -1017,6 +1056,11 @@ local function AdvancedFilters_Loaded(eventCode, addonName)
     AdjustZOsAndOtherAddonsVisibleStuff()
     --Build the LAM settingsmenu if LAM is loaded
     AF.LAMSettingsMenu()
+
+    --For debugging
+    if GetDisplayName() == "@Baertram" then
+        A_F = AF
+    end
 end
 --Load the addon
 EVENT_MANAGER:RegisterForEvent("AdvancedFilters_Loaded", EVENT_ADD_ON_LOADED, AdvancedFilters_Loaded)

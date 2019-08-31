@@ -30,6 +30,7 @@ function util.UpdateCurrentFilter(invType, currentFilter, isCraftingInventoryTyp
     elseif isCraftingInventoryType then
         craftingInv.currentFilter = currentFilter
     else
+        if not PLAYER_INVENTORY.inventories[invType] then return false end
         PLAYER_INVENTORY.inventories[invType].currentFilter = currentFilter
     end
 end
@@ -38,7 +39,7 @@ function util.AbortSubfilterRefresh(inventoryType)
     if inventoryType == nil then return true end
     local doAbort = false
     local subFilterRefreshAbortInvTypes = AF.abortSubFilterRefreshInventoryTypes
-
+    --Abort the subfilter bar refresh at some panels (and always at crafting panels->they will be updated with their own update functions)
     if subFilterRefreshAbortInvTypes[inventoryType] or util.IsCraftingStationInventoryType(inventoryType) then
         doAbort = true
     end
@@ -52,15 +53,15 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
     local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
     local delay             = 0
 
---d("[AF]Apply " .. button.name .. " from " .. filterTag .. " for filterType " .. filterType .. " and inventoryType " .. AF.currentInventoryType)
+--d("[AF]Apply " .. tostring(button.name) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterType) .. " and inventoryType " .. tostring(AF.currentInventoryType))
 
     --if something isn't right, abort
     if callback == nil then
-        d("callback was nil for " .. filterTag)
+        d("[AdvancedFilters]Callback was nil for \'" .. filterTag .. "\'")
         return
     end
     if filterTypeToUse == nil then
-        d("filterType was nil for " .. filterTag)
+        d("[AdvancedFilters]FilterType was nil for \'" .. filterTag .. "\'")
         return
     end
 
@@ -91,17 +92,20 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
         LibFilters:RegisterFilter(filterTag, filterTypeToUse, callback)
         if requestUpdate == true then LibFilters:RequestUpdate(filterTypeToUse) end
 
-        --Update the count of filtered/shown items in the inventory FreeSlot label
-        --Delay this function call as the data needs to be filtered first!
-        zo_callLater(function()
-            util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
+        --If the inventory got a freeSlotLabel and itemCount: Update it
+        if not util.DoNotUpdateInventoryItemCount(filterTypeToUse) then
+            --Update the count of filtered/shown items in the inventory FreeSlot label
+            --Delay this function call as the data needs to be filtered first!
+            zo_callLater(function()
+                util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
 
-            --Run an end callback function now?
-            local endCallback = button.filterEndCallback
-            if endCallback and type(endCallback) == "function" then
-                endCallback()
-            end
-        end, 50)
+                --Run an end callback function now?
+                local endCallback = button.filterEndCallback
+                if endCallback and type(endCallback) == "function" then
+                    endCallback()
+                end
+            end, 50)
+        end
     end, delay)
 end
 
@@ -109,10 +113,26 @@ function util.RemoveAllFilters()
     local LibFilters = util.LibFilters
     local filterType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
 
-    LibFilters:UnregisterFilter("AF_ButtonFilter")
-    LibFilters:UnregisterFilter("AF_DropdownFilter")
+    LibFilters:UnregisterFilter(AF_CONST_BUTTON_FILTER)
+    LibFilters:UnregisterFilter(AF_CONST_DROPDOWN_FILTER)
 
     if filterType ~= nil then LibFilters:RequestUpdate(filterType) end
+end
+
+--Do not update the inventories itemCOunt as it got no count label or no value to update
+--(e.g. smithing research panel)
+function util.DoNotUpdateInventoryItemCount(filterTypeToUse)
+    filterTypeToUse = filterTypeToUse or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    local doNotUpdateInventoryItemCountFilterPanels = {
+        [LF_SMITHING_RESEARCH]          = true,
+        [LF_JEWELRY_RESEARCH]           = true,
+        [LF_SMITHING_RESEARCH_DIALOG]   = true,
+        [LF_JEWELRY_RESEARCH_DIALOG]    = true,
+    }
+    if doNotUpdateInventoryItemCountFilterPanels[filterTypeToUse] then
+        return true
+    end
+    return false
 end
 
 function util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
@@ -126,6 +146,7 @@ function util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
         [LF_SMITHING_CREATION]      = INVENTORY_BACKPACK,
         [LF_SMITHING_DECONSTRUCT]   = INVENTORY_BACKPACK,
         [LF_SMITHING_IMPROVEMENT]   = INVENTORY_BACKPACK,
+        [LF_SMITHING_RESEARCH]      = INVENTORY_BACKPACK,
         [LF_ENCHANTING_CREATION]    = INVENTORY_BACKPACK,
         [LF_ENCHANTING_EXTRACTION]  = INVENTORY_BACKPACK,
         [LF_JEWELRY_REFINE]         = INVENTORY_BACKPACK,
@@ -133,6 +154,7 @@ function util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
         [LF_JEWELRY_DECONSTRUCT]    = INVENTORY_BACKPACK,
         [LF_JEWELRY_IMPROVEMENT]    = INVENTORY_BACKPACK,
         [LF_JEWELRY_IMPROVEMENT]    = INVENTORY_BACKPACK,
+        [LF_JEWELRY_RESEARCH]      = INVENTORY_BACKPACK,
     }
     local mapLibFiltersInvToRealInvType2 = {
         [LF_RETRAIT]                = INVENTORY_BANK,
@@ -140,12 +162,14 @@ function util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
         [LF_SMITHING_CREATION]      = INVENTORY_BACKPACK,
         [LF_SMITHING_DECONSTRUCT]   = INVENTORY_BANK,
         [LF_SMITHING_IMPROVEMENT]   = INVENTORY_BANK,
+        [LF_SMITHING_RESEARCH]      = INVENTORY_BANK,
         [LF_ENCHANTING_CREATION]    = INVENTORY_BANK,
         [LF_ENCHANTING_EXTRACTION]  = INVENTORY_BANK,
         [LF_JEWELRY_REFINE]         = INVENTORY_BANK,
         [LF_JEWELRY_CREATION]       = INVENTORY_BANK,
         [LF_JEWELRY_DECONSTRUCT]    = INVENTORY_BANK,
         [LF_JEWELRY_IMPROVEMENT]    = INVENTORY_BANK,
+        [LF_JEWELRY_RESEARCH]       = INVENTORY_BANK,
     }
     local mapLibFiltersInvToRealInvType3 = {
         [LF_RETRAIT]                = INVENTORY_HOUSE_BANK,
@@ -675,7 +699,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
     ------------------------------------------------------------------------------------------------------------------------------------
 
     -- insert global AdvancedFilters "All" filters
-    for _, callbackEntry in ipairs(subfilterCallbacks.All.dropdownCallbacks) do
+    for _, callbackEntry in ipairs(subfilterCallbacks[AF_CONST_ALL].dropdownCallbacks) do
         table.insert(callbackTable, callbackEntry)
     end
 
@@ -827,12 +851,12 @@ function util.GetInventoryFromCraftingPanel(libFiltersFilterPanelId)
         --[LF_SMITHING_CREATION]      = controlsForChecks.smithing.creationPanel,
         [LF_SMITHING_DECONSTRUCT]   = controlsForChecks.smithing.deconstructionPanel.inventory,
         [LF_SMITHING_IMPROVEMENT]   = controlsForChecks.smithing.improvementPanel.inventory,
-        [LF_SMITHING_RESEARCH]      = nil, --controlsForChecks.smithing.researchPanel.???,
+        [LF_SMITHING_RESEARCH]      = controlsForChecks.smithing.researchPanel,
         [LF_JEWELRY_REFINE]         = controlsForChecks.smithing.refinementPanel.inventory,
         --[LF_JEWELRY_CREATION]       = controlsForChecks.smithing.creationPanel,
         [LF_JEWELRY_DECONSTRUCT]    = controlsForChecks.smithing.deconstructionPanel.inventory,
         [LF_JEWELRY_IMPROVEMENT]    = controlsForChecks.smithing.improvementPanel.inventory,
-        [LF_JEWELRY_RESEARCH]       = nil, --controlsForChecks.smithing.researchPanel.???,
+        [LF_JEWELRY_RESEARCH]       = controlsForChecks.smithing.researchPanel,
         [LF_ENCHANTING_CREATION]    = controlsForChecks.enchanting.inventory,
         [LF_ENCHANTING_EXTRACTION]  = controlsForChecks.enchanting.inventory,
         [LF_RETRAIT]                = controlsForChecks.retrait.retraitPanel.inventory,
@@ -844,12 +868,12 @@ end
 function util.IsCraftingStationInventoryType(inventoryType)
     local craftingInventoryTypes = {
         [LF_SMITHING_REFINE]        = true,
-        --[LF_SMITHING_CREATION]      = true,
+        [LF_SMITHING_CREATION]      = true,
         [LF_SMITHING_DECONSTRUCT]   = true,
         [LF_SMITHING_IMPROVEMENT]   = true,
         [LF_SMITHING_RESEARCH]      = true,
         [LF_JEWELRY_REFINE]         = true,
-        --[LF_JEWELRY_CREATION]       = true,
+        [LF_JEWELRY_CREATION]       = true,
         [LF_JEWELRY_DECONSTRUCT]    = true,
         [LF_JEWELRY_IMPROVEMENT]    = true,
         [LF_JEWELRY_RESEARCH]       = true,
@@ -866,12 +890,12 @@ end
 function util.GetCraftingPanelUsesWornBag(libFiltersFilterPanelId)
     local craftingFilterPanelId2USesWornBag = {
         [LF_SMITHING_REFINE]        = true,
-        --[LF_SMITHING_CREATION]      = false,
+        [LF_SMITHING_CREATION]      = false,
         [LF_SMITHING_DECONSTRUCT]   = true,
         [LF_SMITHING_IMPROVEMENT]   = true,
         [LF_SMITHING_RESEARCH]      = false,
         [LF_JEWELRY_REFINE]         = false,
-        --[LF_JEWELRY_CREATION]       = false,
+        [LF_JEWELRY_CREATION]       = false,
         [LF_JEWELRY_DECONSTRUCT]    = true,
         [LF_JEWELRY_IMPROVEMENT]    = true,
         [LF_JEWELRY_RESEARCH]       = false,
@@ -883,17 +907,18 @@ function util.GetCraftingPanelUsesWornBag(libFiltersFilterPanelId)
     return usesWornBag
 end
 
---Function to return the "predicate" and "filter" functions of the different carfting types, as new inventory lists are build.
---Use the LibFilters filterPanelid as parameter
+--Function to return the "predicate" and "filter" functions used at the different crafting types, as new inventory lists are build.
+-->They will pre-filter and filter the inventory items.
+--Use the LibFilters filterPanelId as parameter
 function util.GetPredicateAndFilterFunctionFromCraftingPanel(libFiltersFilterPanelId)
     local craftingFilterPanelId2PredicateFunc = {
         [LF_SMITHING_REFINE]        = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
-        --[LF_SMITHING_CREATION]      = {nil, nil},
+        [LF_SMITHING_CREATION]      = {nil, nil},
         [LF_SMITHING_DECONSTRUCT]   = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
         [LF_SMITHING_IMPROVEMENT]   = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingImprovement_DoesItemPassFilter},
         [LF_SMITHING_RESEARCH]      = {nil, nil},
         [LF_JEWELRY_REFINE]         = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
-        --[LF_JEWELRY_CREATION]       = true,
+        [LF_JEWELRY_CREATION]       = true,
         [LF_JEWELRY_DECONSTRUCT]    = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
         [LF_JEWELRY_IMPROVEMENT]    = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingImprovement_DoesItemPassFilter},
         [LF_JEWELRY_RESEARCH]       = {nil, nil},
@@ -941,41 +966,54 @@ function util.MapItemFilterType2CraftingStationFilterType(itemFilterType, filter
         ]]
         [LF_SMITHING_REFINE] = {
             [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_REFINE_SMITHING]             = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS,
+                [ITEMFILTERTYPE_AF_REFINE_SMITHING]             = SMITHING_FILTER_TYPE_RAW_MATERIALS,
             },
             [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_REFINE_CLOTHIER]             = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS,
+                [ITEMFILTERTYPE_AF_REFINE_CLOTHIER]             = SMITHING_FILTER_TYPE_RAW_MATERIALS,
             },
             [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_REFINE_WOODWORKING]          = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS,
+                [ITEMFILTERTYPE_AF_REFINE_WOODWORKING]          = SMITHING_FILTER_TYPE_RAW_MATERIALS,
             },
         },
         [LF_SMITHING_DECONSTRUCT] = {
             [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR,
+                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = SMITHING_FILTER_TYPE_WEAPONS,
+                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = SMITHING_FILTER_TYPE_ARMOR,
             },
             [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR,
+                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = SMITHING_FILTER_TYPE_ARMOR,
             },
             [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR,
+                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = SMITHING_FILTER_TYPE_WEAPONS,
+                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = SMITHING_FILTER_TYPE_ARMOR,
             },
         },
         [LF_SMITHING_IMPROVEMENT] = {
             [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR,
+                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = SMITHING_FILTER_TYPE_WEAPONS,
+                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = SMITHING_FILTER_TYPE_ARMOR,
             },
             [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR,
+                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = SMITHING_FILTER_TYPE_ARMOR,
             },
             [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR,
+                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = SMITHING_FILTER_TYPE_WEAPONS,
+                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = SMITHING_FILTER_TYPE_ARMOR,
             },
 
+        },
+        [LF_SMITHING_RESEARCH] = {
+            [CRAFTING_TYPE_BLACKSMITHING] = {
+                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = SMITHING_FILTER_TYPE_WEAPONS,
+                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = SMITHING_FILTER_TYPE_ARMOR,
+            },
+            [CRAFTING_TYPE_CLOTHIER] = {
+                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = SMITHING_FILTER_TYPE_ARMOR,
+            },
+            [CRAFTING_TYPE_WOODWORKING] = {
+                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = SMITHING_FILTER_TYPE_WEAPONS,
+                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = SMITHING_FILTER_TYPE_ARMOR,
+            }
         },
         --[[
         [LF_JEWELRY_CREATION] = {
@@ -987,7 +1025,7 @@ function util.MapItemFilterType2CraftingStationFilterType(itemFilterType, filter
         ]]
         [LF_JEWELRY_REFINE] = {
             [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ITEMFILTERTYPE_AF_REFINE_JEWELRY]             = ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS,
+                [ITEMFILTERTYPE_AF_REFINE_JEWELRY]             = SMITHING_FILTER_TYPE_RAW_MATERIALS,
             },
 
         },
@@ -997,6 +1035,12 @@ function util.MapItemFilterType2CraftingStationFilterType(itemFilterType, filter
             },
         },
         [LF_JEWELRY_IMPROVEMENT] = {
+            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
+                [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING]           = SMITHING_FILTER_TYPE_JEWELRY,
+            },
+
+        },
+        [LF_JEWELRY_RESEARCH] = {
             [CRAFTING_TYPE_JEWELRYCRAFTING] = {
                 [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING]           = SMITHING_FILTER_TYPE_JEWELRY,
             },
@@ -1062,40 +1106,53 @@ function util.MapCraftingStationFilterType2ItemFilterType(craftingStationFilterT
         ]]
         [LF_SMITHING_REFINE] = {
             [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_SMITHING,
+                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_SMITHING,
             },
             [CRAFTING_TYPE_CLOTHIER] = {
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_CLOTHIER,
+                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_CLOTHIER,
             },
             [CRAFTING_TYPE_WOODWORKING] = {
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_WOODWORKING,
+                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_WOODWORKING,
             },
         },
         [LF_SMITHING_DECONSTRUCT] = {
             [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
+                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
             },
             [CRAFTING_TYPE_CLOTHIER] = {
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
             },
             [CRAFTING_TYPE_WOODWORKING] = {
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
+                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
             },
 
         },
         [LF_SMITHING_IMPROVEMENT] = {
             [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
-                [ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
+                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
             },
             [CRAFTING_TYPE_CLOTHIER] = {
-                [ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
             },
             [CRAFTING_TYPE_WOODWORKING] = {
-                [ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
-                [ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
+                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
+            },
+        },
+        [LF_SMITHING_RESEARCH] = {
+            [CRAFTING_TYPE_BLACKSMITHING] = {
+                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
+            },
+            [CRAFTING_TYPE_CLOTHIER] = {
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
+            },
+            [CRAFTING_TYPE_WOODWORKING] = {
+                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
+                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
             },
         },
         --[[
@@ -1108,7 +1165,7 @@ function util.MapCraftingStationFilterType2ItemFilterType(craftingStationFilterT
         ]]
         [LF_JEWELRY_REFINE] = {
             [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_JEWELRY,
+                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_JEWELRY,
             },
         },
         [LF_JEWELRY_DECONSTRUCT] = {
@@ -1118,6 +1175,11 @@ function util.MapCraftingStationFilterType2ItemFilterType(craftingStationFilterT
 
         },
         [LF_JEWELRY_IMPROVEMENT] = {
+            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
+                [SMITHING_FILTER_TYPE_JEWELRY] = ITEMFILTERTYPE_AF_JEWELRY_CRAFTING,
+            },
+        },
+        [LF_JEWELRY_RESEARCH] = {
             [CRAFTING_TYPE_JEWELRYCRAFTING] = {
                 [SMITHING_FILTER_TYPE_JEWELRY] = ITEMFILTERTYPE_AF_JEWELRY_CRAFTING,
             },
@@ -1379,6 +1441,172 @@ end
 
 --Update the crafting table's inventory item count etc. from external addons
 function util.UpdateCraftingInventoryFilteredCount(invType)
---d("[AF]util.UpdateCraftingInventoryFilteredCount - invType: " ..tostring(invType))
-    util.updateInventoryInfoBarCountLabel(invType, nil, true)
+    if not util.DoNotUpdateInventoryItemCount(invType) then
+        --d("[AF]util.UpdateCraftingInventoryFilteredCount - invType: " ..tostring(invType))
+        util.updateInventoryInfoBarCountLabel(invType, nil, true)
+    end
+end
+
+--Get the list's control name for the subfilterBar reanchor
+function util.GetListControlForSubfilterBarReanchor(inventory, p_currentFilter, p_craftingType)
+    local listControlsForSubfilterBarReanchor = AF.listControlForSubfilterBarReanchor
+    local filterPanelId = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    local listControlForSubfilterBarReanchor
+    local listControlForSubfilterBarReanchorData = listControlsForSubfilterBarReanchor[filterPanelId]
+    local moveInvBottomBarDown = false
+    if listControlForSubfilterBarReanchorData then
+        listControlForSubfilterBarReanchor = listControlForSubfilterBarReanchorData.control
+        moveInvBottomBarDown = listControlForSubfilterBarReanchorData.moveInvBottomBarDown
+    end
+    return listControlForSubfilterBarReanchor, moveInvBottomBarDown
+end
+
+--Filter a horizontal scroll list and run a filterFunction given to determine the entries to show in the
+--horizontal list afterwards
+function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipTypes, armorTypes)
+    if not horizontalScrollList then return false end
+d("[AF]util.FilterHorizontalScrollList")
+    local craftingType = GetCraftingInteractionType()
+    if craftingType == CRAFTING_TYPE_INVALID then return false end
+    local researchLineListArmorTypes = AF.researchLinesToArmorType[craftingType]
+    local researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = AF.researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[craftingType]
+    local researchLineListIndexOfWeaponOrArmorOrJewelryType = 0
+    --Rebuild the list but filter the items by applying new filter to the current libFilter filterPanelId
+    --which then will be used inside the :Refresh() function of the panel
+    --Count the filterTypes
+    local filterTypeCount = 0
+    if filterOrEquipTypes ~= nil then
+        if type(filterOrEquipTypes) == "table" then
+            filterTypeCount = #filterOrEquipTypes
+            if filterTypeCount == 1 then
+                researchLineListIndexOfWeaponOrArmorOrJewelryType = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[filterOrEquipTypes[1]]
+            end
+        else
+            filterTypeCount = 1
+            researchLineListIndexOfWeaponOrArmorOrJewelryType = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[filterOrEquipTypes]
+        end
+
+        --Add the filterFunc to the current filterPanelId's filters
+        local filterPanelId = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+        if filterPanelId then
+            --Check the current crafting table's research line for the indices and build a "skip table" for LibFilters-3.0
+            local fromResearchLineIndex = 1
+            local toResearchLineIndex = GetNumSmithingResearchLines(craftingType)
+            local skipTable = {}
+            --Check for each possible researchLine at the given crafting station
+            local researchLineAtCraftingStationToFilterType = AF.researchLinesToFilterTypes[craftingType]
+            if researchLineAtCraftingStationToFilterType then
+                for researchLineIndex = 1, toResearchLineIndex do
+--d(">researchLineIndex: " ..tostring(researchLineIndex))
+                    --Get the current filterType at the researchLineIndex
+                    local filterTypeOfResearchLineIndex = researchLineAtCraftingStationToFilterType[researchLineIndex]
+                    local researchLineIndexIsAllowed = false
+                    if filterTypeOfResearchLineIndex then
+                        --Check each filterType
+                        if type(filterOrEquipTypes) == "table" then
+                            for _, filterType in ipairs(filterOrEquipTypes) do
+                                if filterType == filterTypeOfResearchLineIndex then
+--d(">>filterType is correct: " ..tostring(filterType) .. ", filterTypeResearchLine: " ..tostring(filterTypeOfResearchLineIndex))
+                                    if armorTypes and researchLineListArmorTypes then
+                                        local researchLineListArmorType = researchLineListArmorTypes[researchLineIndex]
+                                        if researchLineListArmorType then
+--d(">>>armorTypeResearchLine: " ..tostring(researchLineListArmorType))
+                                            if type(armorTypes) == "table" then
+                                                for _, armorType in ipairs(armorTypes) do
+                                                    if armorType == researchLineListArmorType then
+--d(">>>>armorType correct!")
+                                                        researchLineIndexIsAllowed = true
+                                                        break --exit the inner inner armorTypes for .. loop of filterTypes
+                                                    end
+                                                end
+                                            else
+                                                if armorTypes == researchLineListArmorType then
+--d(">>>>armorType correct!!!")
+                                                    researchLineIndexIsAllowed = true
+                                                end
+                                            end
+                                        end
+                                    else
+                                        researchLineIndexIsAllowed = true
+                                    end
+                                end
+                                if researchLineIndexIsAllowed then
+                                    break --exit the inner filterOrEquipTyps for .. loop of filterTypes
+                                end
+                            end
+                        else
+                            if filterOrEquipTypes == filterTypeOfResearchLineIndex then
+--d(">>!!!filterType is correct: " ..tostring(filterOrEquipTypes) .. ", filterTypeResearchLine: " ..tostring(filterTypeOfResearchLineIndex))
+                                if armorTypes and researchLineListArmorTypes then
+                                    local researchLineListArmorType = researchLineListArmorTypes[researchLineIndex]
+                                    if researchLineListArmorType then
+--d(">>>!!!armorTypeResearchLine: " ..tostring(researchLineListArmorType))
+                                        if type(armorTypes) == "table" then
+                                            for _, armorType in ipairs(armorTypes) do
+                                                if armorType == researchLineListArmorType then
+--d(">>>>!!!armorType correct!")
+                                                    researchLineIndexIsAllowed = true
+                                                    break --exit the inner inner armorTypes for .. loop of filterTypes
+                                                end
+                                            end
+                                        else
+                                            if armorTypes == researchLineListArmorType then
+--d(">>>>!!!armorType correct!!!")
+                                                researchLineIndexIsAllowed = true
+                                            end
+                                        end
+                                    end
+                                else
+                                    researchLineIndexIsAllowed = true
+                                end
+                            end
+                        end
+                    end
+                    --FilterType is not allowed? Add it to the skip table
+                    if not researchLineIndexIsAllowed then
+d("<<<<skipping researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+                        skipTable[researchLineIndex] = true
+                    else
+d(">>>>>adding researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+                    end
+                end
+                --local expectedTypeFilter = ZO_CraftingUtils_GetSmithingFilterFromTrait(GetSmithingResearchLineTraitInfo(craftingType, researchLineIndex, 1)) --returns 2 for weapons and 4 for armor, ? for jewelry
+
+                --Set the from and to and the skipTable values for the loop "for researchLineIndex = 1, GetNumSmithingResearchLines(craftingType) do"
+                --in function SMITHING.researchPanel.Refresh
+                -->Was overwritten in LibFilters-3.0 helper functions and the function LibFilters3.SetResearchLineLoopValues(from, to, skipTable) was added
+                -->to set the values for your needs
+                util.LibFilters:SetResearchLineLoopValues(fromResearchLineIndex, toResearchLineIndex, skipTable)
+                --Refresh -> rebuild and Commit the new list
+                controlsForChecks.researchPanel:Refresh() --> Will rebuild the list entries and call list:Commit()
+                --TODO: Somehow the researchPAnel:Refresh() function is called twice?? WHY???
+                --      Due to this we need to clear the variables delayed!
+                zo_callLater(function()
+                    --Reset the custom data for the loop now
+                    if controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues then
+                        controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues = nil
+                    end
+                end, 1000)
+            end
+        end
+    end
+
+    --Scroll the list to the selected weapon or armorType
+    if not researchLineListIndexOfWeaponOrArmorOrJewelryType then researchLineListIndexOfWeaponOrArmorOrJewelryType = 0 end
+    zo_callLater(function()
+        --d(">researchLineListIndexOfWeaponOrArmorType: " ..tostring(researchLineListIndexOfWeaponOrArmorType))
+        horizontalScrollList:SetSelectedIndex(researchLineListIndexOfWeaponOrArmorOrJewelryType)
+    end, 25)
+end
+
+--Check if the research panel is shown and do some special stuff with the horizontal scroll list then.
+--If not: Run the filter function only
+function util.CheckForResearchPanelAndRunFilterFunction(filterFunc, filterOrEquipTypes, armorTypes)
+d("[AF]util.CheckForResearchPanelAndRunFilterFunction")
+    --If the research panel is shown:
+    --Clear the horizontal list and only show the entries which apply to the selected item type
+    local researchHorizontalScrollList = AF.controlsForChecks.researchLineList
+    if researchHorizontalScrollList and researchHorizontalScrollList.control and not researchHorizontalScrollList.control:IsHidden() then
+        util.FilterHorizontalScrollList(researchHorizontalScrollList, filterOrEquipTypes, armorTypes)
+    end
 end
