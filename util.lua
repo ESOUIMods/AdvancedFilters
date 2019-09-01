@@ -6,6 +6,103 @@ local util = AF.util
 
 local controlsForChecks = AF.controlsForChecks
 
+--======================================================================================================================
+-- -v- Filter plugin functions                                                                                    -v-
+--======================================================================================================================
+--Slot is the bagId, coming from libFilters, helper function (e.g. deconstruction).
+--Prepare the slot variable with bagId and slotIndex
+function util.prepareSlot(bagId, slotIndex)
+    local slot = {}
+    slot.bagId = bagId
+    slot.slotIndex = slotIndex
+    return slot
+end
+--======================================================================================================================
+-- -^- Filter plugin functions                                                                                    -^-
+--======================================================================================================================
+
+--======================================================================================================================
+-- -v- Helper functions                                                                                              -v-
+--======================================================================================================================
+--Get the language of the client
+function util.GetLanguage()
+    local lang = GetCVar("language.2")
+    local supported = {
+        de = 1,
+        en = 2,
+        es = 3,
+        fr = 4,
+        ru = 5,
+        jp = 6,
+    }
+
+    --check for supported languages
+    if(supported[lang] ~= nil) then return lang end
+
+    --return english if not supported
+    return "en"
+end
+
+--Localization helper
+function util.Localize(text)
+    if type(text) == 'number' then
+        -- get the string from this constant
+        text = GetString(text)
+    end
+    -- clean up suffixes such as ^F or ^S
+    return zo_strformat(SI_TOOLTIP_ITEM_NAME, text) or " "
+end
+
+--Run a function throttled (check if it should run already and overwrite the old call then with a new one to
+--prevent running it multiple times in a short time)
+function util.ThrottledUpdate(callbackName, timer, callback, ...)
+    if not callbackName or callbackName == "" or not callback then return end
+    local args
+    if ... ~= nil then
+        args = {...}
+    end
+    local function Update()
+        EVENT_MANAGER:UnregisterForUpdate(callbackName)
+        if args then
+            callback(unpack(args))
+        else
+            callback()
+        end
+    end
+    EVENT_MANAGER:UnregisterForUpdate(callbackName)
+    EVENT_MANAGER:RegisterForUpdate(callbackName, timer, Update)
+end
+--======================================================================================================================
+-- -^- Helper functions                                                                                              -^-
+--======================================================================================================================
+
+--======================================================================================================================
+-- -v Itemlink functions                                                                                           -v-
+--======================================================================================================================
+function util.GetItemLink(slot)
+    --Supporrt for AutoCategory AddOn ->
+    -- Collapsable headers in the inventories & crafting stations
+    if slot == nil or type(slot) ~= "table" or (slot.isHeader ~= nil and slot.isHeader) then return end
+    if slot.bagId and slot.slotIndex then
+        return GetItemLink(slot.bagId, slot.slotIndex)
+    elseif slot.slotIndex then
+        return GetStoreItemLink(slot.slotIndex)
+    end
+    return
+end
+
+--Build an itemlink from an itemId
+function util.BuildItemLink(itemId)
+    if itemId == nil then return nil end
+    return string.format("|H1:item:%d:%d:50:0:0:0:0:0:0:0:0:0:0:0:0:%d:%d:0:0:%d:0|h|h", itemId, 364, ITEMSTYLE_NONE, 0, 10000)
+end
+--======================================================================================================================
+-- -^- Itemlink functions                                                                                           -^-
+--======================================================================================================================
+
+--======================================================================================================================
+-- -v- Inventory filter functions                                                                                  -v-
+--======================================================================================================================
 function util.GetCurrentFilterTypeForInventory(invType)
     if invType == nil then return end
     local filterType
@@ -34,108 +131,13 @@ function util.UpdateCurrentFilter(invType, currentFilter, isCraftingInventoryTyp
         PLAYER_INVENTORY.inventories[invType].currentFilter = currentFilter
     end
 end
+--======================================================================================================================
+-- -^- Inventory filter functions                                                                                  -^-
+--======================================================================================================================
 
-function util.AbortSubfilterRefresh(inventoryType)
-    if inventoryType == nil then return true end
-    local doAbort = false
-    local subFilterRefreshAbortInvTypes = AF.abortSubFilterRefreshInventoryTypes
-    --Abort the subfilter bar refresh at some panels (and always at crafting panels->they will be updated with their own update functions)
-    if subFilterRefreshAbortInvTypes[inventoryType] or util.IsCraftingStationInventoryType(inventoryType) then
-        doAbort = true
-    end
-    return doAbort
-end
-
-function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
-
-    local LibFilters        = util.LibFilters
-    local callback          = button.filterCallback
-    local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
-    local delay             = 0
-    local buttonName        = button.name
-
---d("[AF]ApplyFilter " .. tostring(buttonName) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterType) .. " and inventoryType " .. tostring(AF.currentInventoryType))
-
-    --if something isn't right, abort
-    if callback == nil then
-        d("[AdvancedFilters]ERROR - Callback was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
-        return
-    end
-    if filterTypeToUse == nil then
-        d("[AdvancedFilters]ERROR - FilterType was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
-        return
-    end
-
-    --Check if the parameter to reset the current dropdown filter to "All" was registered
-    -->This is needed if the dropdown filters rely on the currently "shown" (and thus already filtered) inventory items
-    -->to only use these for their filter functions/comparisons, and not ALL items of the inventories involved
-    if filterTag == AF_CONST_DROPDOWN_FILTER and button.filterResetAtStart then
-        delay = button.filterResetAtStartDelay or 50 --Set delay so the next dropdown filter will be called AFTER evertyhing got updated
-        --Clear the filters and refresh the visible inventory items now.
-        --Do not change the dropdownbox entry to "ALL" or the "lastSelectedDropdownEntry" will be changed as well!
-        --Clear current filters without an update
-        LibFilters:UnregisterFilter(filterTag)
-        --Update the inventory to show all items unfiltered again
-        LibFilters:RequestUpdate(filterTypeToUse)
-    end
-
-    --Call deleyed if the dropdown filter was reset to all
-    zo_callLater(function()
-        --Check if a function should be executed before the filters get applied
-        local filterStartCallback = button.filterStartCallback
-        if filterStartCallback and type(filterStartCallback) == "function" then
-            filterStartCallback()
-        end
-
-        --first, clear current filters without an update
-        LibFilters:UnregisterFilter(filterTag)
-        --then register new one and hand off update parameter
-        LibFilters:RegisterFilter(filterTag, filterTypeToUse, callback)
-        if requestUpdate == true then LibFilters:RequestUpdate(filterTypeToUse) end
-
-        --If the inventory got a freeSlotLabel and itemCount: Update it
-        if not util.DoNotUpdateInventoryItemCount(filterTypeToUse) then
-            --Update the count of filtered/shown items in the inventory FreeSlot label
-            --Delay this function call as the data needs to be filtered first!
-            zo_callLater(function()
-                util.updateInventoryInfoBarCountLabel(AF.currentInventoryType)
-
-                --Run an end callback function now?
-                local endCallback = button.filterEndCallback
-                if endCallback and type(endCallback) == "function" then
-                    endCallback()
-                end
-            end, 50)
-        end
-    end, delay)
-end
-
-function util.RemoveAllFilters()
-    local LibFilters = util.LibFilters
-    local filterType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
-
-    LibFilters:UnregisterFilter(AF_CONST_BUTTON_FILTER)
-    LibFilters:UnregisterFilter(AF_CONST_DROPDOWN_FILTER)
-
-    if filterType ~= nil then LibFilters:RequestUpdate(filterType) end
-end
-
---Do not update the inventories itemCOunt as it got no count label or no value to update
---(e.g. smithing research panel)
-function util.DoNotUpdateInventoryItemCount(filterTypeToUse)
-    filterTypeToUse = filterTypeToUse or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
-    local doNotUpdateInventoryItemCountFilterPanels = {
-        [LF_SMITHING_RESEARCH]          = true,
-        [LF_JEWELRY_RESEARCH]           = true,
-        [LF_SMITHING_RESEARCH_DIALOG]   = true,
-        [LF_JEWELRY_RESEARCH_DIALOG]    = true,
-    }
-    if doNotUpdateInventoryItemCountFilterPanels[filterTypeToUse] then
-        return true
-    end
-    return false
-end
-
+--======================================================================================================================
+-- -v- Mapping functions                                                                                            -v-
+--======================================================================================================================
 function util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
     --One Libfilters inventoryType can have up to 4 different real inventory types:
     --e.g. Crafting deconstruction can happen for bagpack, bank and house_bank items
@@ -203,305 +205,13 @@ function util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
     if realInvType4 ~= nil then table.insert(realInvTypes, realInvType4) end
     return realInvTypes
 end
+--======================================================================================================================
+-- -^- Mapping functions                                                                                            -^-
+--======================================================================================================================
 
---Check if an item's filterData contains an itemFilterType
-function util.IsItemFilterTypeInItemFilterData(itemFilterData, itemFilterType)
-    if itemFilterData == nil or itemFilterType == nil then return false end
-    for _, itemFilterTypeInFilterData in ipairs(itemFilterData) do
-        if itemFilterTypeInFilterData == itemFilterType then return true end
-    end
-end
-
---Refresh the subfilter button bar and disable non-given/non-matching subfilter buttons ("grey-out" the buttons)
-function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
-    calledFromExternalAddon = calledFromExternalAddon or ""
-    local inventoryType = subfilterBar.inventoryType
-    local craftingType = util.GetCraftingType()
-    local isNoCrafting = not util.IsCraftingPanelShown()
-    local realInvTypes
-    local inventory, inventorySlots
-    local currentFilter
-    local bagWornItemCache
---d("[AF]SubFilter refresh, calledFromExternalAddon: " .. tostring(calledFromExternalAddon) .. ", invType: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar) .. ", craftingType: " .. tostring(craftingType) .. ", isNoCrafting: " .. tostring(isNoCrafting))
---AF._currentSubfilterBarAtRefreshCheck = subfilterBar
-
-    --Abort the subfilterBar refresh method? Or check for crafting inventory types and return teh correct inventory types then
-    if util.AbortSubfilterRefresh(inventoryType) then
-        --Try to map the fake inventory type from LibFilters to the real ingame inventory type
-        realInvTypes = util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
-        if realInvTypes == nil then
---d("<SubFilter refresh aborted: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar))
-            return
-        end
-        --Improvement panel: BAG_WORN needs to be checked as well later on!
-        if inventoryType == LF_SMITHING_IMPROVEMENT or inventoryType == LF_JEWELRY_IMPROVEMENT or inventoryType == LF_RETRAIT then
-            bagWornItemCache = SHARED_INVENTORY:GetOrCreateBagCache(BAG_WORN)
-        end
---d("<SubFilter refresh - go on: " .. tostring(#realInvTypes) .. ", subfilterBar: " ..tostring(subfilterBar) .. ", bagWornToo?: " ..tostring(bagWornItemCache ~= nil))
-    else
-        realInvTypes = {}
-        table.insert(realInvTypes, inventoryType)
-    end
-    --Setting to gray out the buttons is enbaled?
-    local grayOutSubFiltersWithNoItems  = AF.settings.grayOutSubFiltersWithNoItems
-    --Check if a bank/guild bank/house storage is opened
-    local isVendorPanel                 = util.IsFilterPanelShown(LF_VENDOR_SELL) or false
-    local isBankDepositPanel            = AF.bankOpened and util.IsFilterPanelShown(LF_BANK_DEPOSIT) or false
-    local isGuildBankDepositPanel       = AF.guildBankOpened  and util.IsFilterPanelShown(LF_GUILDBANK_DEPOSIT) or false
-    local isHouseBankDepositPanel       = AF.houseBankOpened  and util.IsFilterPanelShown(LF_HOUSE_BANK_DEPOSIT) or false
-    local isABankDepositPanel           = (isBankDepositPanel or isGuildBankDepositPanel or isHouseBankDepositPanel) or false
-    local isGuildStoreSellPanel         = util.IsFilterPanelShown(LF_GUILDSTORE_SELL) or false
-    local isRetraitStation              = util.IsRetraitPanelShown()
-    local isJunkInvButtonActive         = subfilterBar.name == (AF.inventoryNames[INVENTORY_BACKPACK] .. "_" .. AF.filterTypeNames[ITEMFILTERTYPE_JUNK]) or false
-    local libFiltersPanelId             = util.GetCurrentFilterTypeForInventory(inventoryType)
---d(">isVendorPanel: " .. tostring(isVendorPanel) .. ", isBankDepositPanel: " .. tostring(isBankDepositPanel) .. ", isGuildBankDepositPanel: " .. tostring(isGuildBankDepositPanel) .. ", isHouseBankDepositPanel: " .. tostring(isHouseBankDepositPanel) .. ", isRetraitStation: " .. tostring(isRetraitStation) .. ", isJunkInvButtonActive: " .. tostring(isJunkInvButtonActive) .. ", libFiltersPanelId: " .. tostring(libFiltersPanelId) .. ", grayOutSubfiltersWithNoItems: " ..tostring(grayOutSubFiltersWithNoItems))
-
-    local doEnableSubFilterButtonAgain = false
-    local breakInventorySlotsLoopNow = false
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-    --Check subfilterbutton for items, using the filter function and junk checks (only for non-crafting stations)
-    local function checkBagContentsNow(bag, bagData, realInvType, button)
-        doEnableSubFilterButtonAgain = false
-        breakInventorySlotsLoopNow = false
-        local hasAnyJunkInBag = false
-        if isNoCrafting and bag ~= BAG_WORN then
-            hasAnyJunkInBag = HasAnyJunk(bag, false)
-        end
-        local bagDataToCheck = {}
-        --Worn items? The given data is quite different then the PLAYER_INVENTORY data so one needs to map it
-        if bag == BAG_WORN then
-            bagDataToCheck[1] = bagData
-        else
-            bagDataToCheck = bagData
-        end
-        local itemsFound = 0
-        for _, itemData in pairs(bagDataToCheck) do
-            breakInventorySlotsLoopNow = false
-            local isItemStolen = false
-            local isItemJunk = false
-            local isItemBankAble = true
-            local isBOPTradeable = false
-            local isBound = false
-            local passesCallback
-            local passesFilter
-            if isNoCrafting then
-                passesCallback = button.filterCallback(itemData)
-                --Like crafting tables the junk inventory got different itemTypes in one section (ITEMFILTERTYPE_JUNK = 9). So the filter comparison does not work and the callback should be enough to check.
-                passesFilter = passesCallback and ((isJunkInvButtonActive and currentFilter == ITEMFILTERTYPE_JUNK)
-                        or (util.IsItemFilterTypeInItemFilterData(itemData.filterData, currentFilter)))
-                        and util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(itemData, realInvType, craftingType, libFiltersPanelId)
-            else
-                passesCallback = button.filterCallback(itemData)
-                --Todo: ItemData.filterData is not reliable at crafting stations as the items are collected from several different bags!
-                --Todo: Thus the filter is always marked as "passed". Is this correct and does it work properly? To test!
-                --> Set the currentFilter = itemData.filterData[1], which should be the itemType of the current item
-                --currentFilter = itemData.filterData[1]
-                local otherAddonUsesFilters = util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(itemData, realInvType, craftingType, libFiltersPanelId)
-                passesFilter = passesCallback and otherAddonUsesFilters
-                --Do more filter checks for the crafting types, if the filter passes until now
-                if passesFilter then
-                    --Jewelry crafting
-                    if craftingType == CRAFTING_TYPE_JEWELRYCRAFTING then
-                        --Jewelry deconstruction
-                        if libFiltersPanelId == LF_JEWELRY_DECONSTRUCT then
-                            local itemLink = GetItemLink(itemData.bagId, itemData.slotIndex)
-                            passesFilter = passesFilter and not IsItemLinkForcedNotDeconstructable(itemLink)
-                        end
-                    --Retrait
-                    elseif craftingType == CRAFTING_TYPE_NONE then
-                        if libFiltersPanelId == LF_RETRAIT and isRetraitStation then
-                            passesFilter = passesFilter and CanItemBeRetraited(itemData.bagId, itemData.slotIndex)
-                        end
-                    end
-                end
-
-
--- TODO: Check retrait station subfilter buttons greying out properly
--- TODO: Check jewelry refine subfilter buttons greying out properly
---if passesCallback and passesFilter then
---if libFiltersPanelId == LF_JEWELRY_REFINE then
---    local itemLink = GetItemLink(itemData.bagId, itemData.slotIndex)
---    local itemType = GetItemLinkItemType(itemLink)
---    if itemType == ITEMTYPE_JEWELRY_TRAIT or itemType == ITEMTYPE_JEWELRY_RAW_TRAIT or itemType == ITEMTYPE_JEWELRYCRAFTING_BOOSTER or
---    itemType == ITEMTYPE_JEWELRYCRAFTING_MATERIAL or itemType == ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER or itemType == ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL then
---d("[AF]SubfilterRefresh: " .. itemLink .. ", passesCallback: " .. tostring(passesCallback) .. ", passesFilter: " ..tostring(passesFilter))
-    --end
---end
-            end
-            if passesCallback and passesFilter then
-                --Check if item is junk and do not pass the callback then!
-                if hasAnyJunkInBag then
-                    isItemJunk = IsItemJunk(itemData.bagId, itemData.slotIndex)
-                end
-                --Check if item is stolen (crafting or banks)
-                if isABankDepositPanel or isVendorPanel or not isNoCrafting or isGuildStoreSellPanel then
-                    isItemStolen = IsItemStolen(itemData.bagId, itemData.slotIndex)
-                end
-                --Checks for bound and BOP tradeable
-                if isGuildBankDepositPanel or isGuildStoreSellPanel then
-                    isBound         = IsItemBound(itemData.bagId, itemData.slotIndex)
-                    isBOPTradeable  = IsItemBoPAndTradeable(itemData.bagId, itemData.slotIndex)
-                end
-                --Is an item below a subfilter but cannot be deposit/sold (bank, guild bank, vendor):
-                --The subfilter button will be still enabled as there are no items to check (will be filtered by ESO vanilla UI BEFORE AF can check them)
-                --if isBankDepositPanel or isHouseBankDepositPanel then
-                --Check if items are not bankable:
-                --isItemBankAble =
-                --end
-                if isGuildBankDepositPanel then
-                    --Check if items are not guild bankable:
-                    --Stolen items
-                    --Bound items
-                    --Bound but tradeable items
-                    isItemBankAble = not isBound and not isBOPTradeable
-                end
-                ----------------------------------------------------------------------------------------
-                --[No crafting panel] (e.g. inventory, bank, guild bank, mail, trade, craftbag):
-                --Item is:
-                -->no junk
-                -->or at junk panel and item is junk
-                if isNoCrafting then
-                    --[Bank/Guild Bank deposit]
-                    --Item is:
-                    -->Not stolen
-                    -->Bankable (unbound)
-                    -->not junk
-                    -->Or junk, and junk inventory filter button is active
-                    if isABankDepositPanel then
-                        doEnableSubFilterButtonAgain = not isItemStolen and isItemBankAble and (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
-
-                        --[Vendor]
-                        --Item is:
-                        -->Not stolen
-                        -->not junk
-                        -->Or junk, and junk inventory filter button is active
-                    elseif isVendorPanel then
-                        doEnableSubFilterButtonAgain = not isItemStolen and (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
-
-                        --[Guild store list/sell]
-                        --Item is:
-                        -->Not stolen
-                        -->not junk
-                        -->not bound
-                    elseif isGuildStoreSellPanel then
-                        doEnableSubFilterButtonAgain = not isItemStolen and not isItemJunk and not isBound and not isBOPTradeable
-
-                        --[Normal inventory, mail, trade, craftbag]
-                        --Item is:
-                        -->not junk
-                        -->Or junk, and junk inventory filter button is active
-                    else
-                        doEnableSubFilterButtonAgain = (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
-                    end
-                        ----------------------------------------------------------------------------------------
-                        --[Crafting panel] (e.g. refine, creation, deconstruction, improvement, research, recipes, extraction, retrait):
-                        --Item is:
-                        -->Not stolen (currently deactivated!)
-                else
---if isRetraitStation and button.name == "Shield" then
---d(">" .. GetItemLink(itemData.bagId, itemData.slotIndex) .. " passesCallback: " ..tostring(passesCallback) .. ", otherAddonUsesFilters: " .. tostring(otherAddonUsesFilters) .. ", passesFilter: " ..tostring(passesFilter) .. ", canBeRetraited: " .. tostring(CanItemBeRetraited(itemData.bagId, itemData.slotIndex)) .. " - doEnableSubFilterButtonAgain: " ..tostring(doEnableSubFilterButtonAgain))
---end
-                    itemsFound = itemsFound +1
---d("<<< Crafting station: " ..tostring(itemsFound))
-                    --doEnableSubFilterButtonAgain = not isItemStolen
-                    doEnableSubFilterButtonAgain = (itemsFound > 0) or false
-                end
-                if doEnableSubFilterButtonAgain then
-                    breakInventorySlotsLoopNow = true
-                    break
-                end
-            else
---d("<<< did not pass filter or callback!")
-            end
-        end -- for ... itemData in bagData
---d(">breakInventorySlotsLoopNow: " ..tostring(breakInventorySlotsLoopNow) .. ", doEnableSubFilterButtonAgain: " .. tostring(doEnableSubFilterButtonAgain))
-    end
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-
-    --Check if filters apply to the subfilter and change the color of the subfilter button
-    for _, button in ipairs(subfilterBar.subfilterButtons) do
---d(">==============================>\nButtonName: " .. tostring(button.name))
-        if button.name ~= AF_CONST_ALL then
-            --Setting to disable subfilter buttons with no items is enabled?
-            if grayOutSubFiltersWithNoItems then
---d("Gray out wished!")
-                doEnableSubFilterButtonAgain = false
-                breakInventorySlotsLoopNow = false
-                --Disable button first (May be enabled further down again if checks allow it)
-                if button.clickable then
---d(">disabling button!")
-                    button.texture:SetColor(.3, .3, .3, .9)
-                    button:SetEnabled(false)
-                    button.clickable = false
-                end
-                --Check each inventory now
-                for _, realInvType in pairs(realInvTypes) do
-                    if breakInventorySlotsLoopNow then break end
-                    breakInventorySlotsLoopNow = false
-                    inventory = PLAYER_INVENTORY.inventories[realInvType]
-                    if inventory ~= nil and inventory.slots ~= nil then
-                        --Get the current filter. Normally this comes from the inventory. Crafting currentFilter determination is more complex!
-                        if isNoCrafting then
-                            currentFilter = inventory.currentFilter
---d(">currentFilter: " .. tostring(currentFilter))
-                        else
-                            --Todo: ItemData.filterData is not reliable at crafting stations as the items are collected from several different bags!
-                            --Todo: Thus the filter is always marked as "passed". Is this correct and does it work properly? To test!
-                            --Todo: Enable this section again if currentFilter is needed further down in this function!
-                            --[[
-                            local invType = AF.currentInventoryType
-                            local craftingMode = util.GetCraftingMode(invType)
-                            currentFilter = util.MapCraftingStationFilterType2ItemFilterType(craftingMode, invType, craftingType)
-                            ]]
-                        end
-                        inventorySlots = inventory.slots
-                        --Check subfilterbutton for items, using the filter function and junk checks (only for non-crafting stations)
-                        for bag, bagData in pairs(inventorySlots) do
-                            if breakInventorySlotsLoopNow then break end
-                            checkBagContentsNow(bag, bagData, realInvType, button)
-                            if doEnableSubFilterButtonAgain then
---d(">>> !!! subfilterButton got enabled again !!!")
-                                breakInventorySlotsLoopNow = true
-                            end
-                        end
-                    end
-                    if doEnableSubFilterButtonAgain then
---d(">>>> !!!! subfilterButton got enabled again !!!!")
-                        breakInventorySlotsLoopNow = true
-                    end
-                end
-                --Check the worn items as well? (for LF_SMITHING_IMPROVEMENT e.g.)
-                if not doEnableSubFilterButtonAgain and bagWornItemCache ~= nil then
-                    for _, data in pairs(bagWornItemCache) do
-                        checkBagContentsNow(BAG_WORN, data, INVENTORY_BACKPACK, button)
-                        if doEnableSubFilterButtonAgain then
---d(">>>>> !!!!! BAG_WORN: subfilterButton got enabled again !!!!")
-                            breakInventorySlotsLoopNow = true
-                            break
-                        end
-                    end
-                end
-            else
---d("No gray out wished!")
-                --Setting to disable subfilter buttons with no items is disabled:
-                --Enable all subfilter buttons again
-                doEnableSubFilterButtonAgain = true
-            end
-            --Enable the subfilter button again now?
-            if doEnableSubFilterButtonAgain then
---d(">Enabling button again: " .. tostring(button.name))
-                button.texture:SetColor(1, 1, 1, 1)
-                button:SetEnabled(true)
-                button.clickable = true
-            end
-        end
-    end
-end
-
+--======================================================================================================================
+-- -v- Dropdown box functions                                                                                       -v-
+--======================================================================================================================
 --Check if the current panel should show the dropdown "addon filters" for "all" too
 function util.checkIfPanelShouldShowAddonAllDropdownFilters(invType)
     --d("[AF]checkIfPanelShouldShowAddonAllDropdownFilters - invType: " .. tostring(invType))
@@ -520,12 +230,7 @@ function util.checkIfPanelShouldShowAddonAllDropdownFilters(invType)
     return showAtInv
 end
 
---Check if the craftbag is shown as the groupName at the craftbag is different than non-craftbag
---e.g. the groupName "Alchemy" is the normal groupName "Crafting" with subfilterName "Alchemy"
-function util.IsCraftBagShown()
-    return not ZO_CraftBag:IsHidden()
-end
-
+--Build the subfilterBar's dropdown box filter callback tables and functions
 function util.BuildDropdownCallbacks(groupName, subfilterName)
     local doDebugOutput = AF.settings.doDebugOutput
     local subfilterNameOrig = subfilterName
@@ -537,6 +242,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
     local keys = AF.dropdownCallbackKeys
     local craftBagFilterGroups = AF.craftBagFilterGroups
     local subfilterCallbacks = AF.subfilterCallbacks
+    local invOrFilterType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
 
     ------------------------------------------------------------------------------------------------------------------------------------
     ------------------------------------------------------------------------------------------------------------------------------------
@@ -572,18 +278,17 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
         --Is the addon filter not to be shown at some libFilter panels?
         if addonTable.excludeFilterPanels ~= nil then
             if doDebugOutput then d(">>excludeFilterPanels: Yes") end
-            local filterType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
             if type(addonTable.excludeFilterPanels) == "table" then
                 for _, filterPanelToExclude in pairs(addonTable.excludeFilterPanels) do
-                    if filterType == filterPanelToExclude then
+                    if invOrFilterType == filterPanelToExclude then
                         if doDebugOutput then d(">>>insertAddon - filterPanelToExclude: " ..tostring(filterPanelToExclude)) end
                         return
                     else
-                        if doDebugOutput then d(">>>insertAddon - filterPanelToExclude: " ..tostring(filterPanelToExclude) .. " <> filterType: "..tostring(filterType)) end
+                        if doDebugOutput then d(">>>insertAddon - filterPanelToExclude: " ..tostring(filterPanelToExclude) .. " <> filterType: "..tostring(invOrFilterType)) end
                     end
                 end
             else
-                if filterType == addonTable.excludeFilterPanels then
+                if invOrFilterType == addonTable.excludeFilterPanels then
                     if doDebugOutput then d(">>>insertAddon - filterPanelToExclude: " ..tostring(addonTable.excludeFilterPanels)) end
                     return
                 end
@@ -701,6 +406,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
 
     -- insert global AdvancedFilters "All" filters
     for _, callbackEntry in ipairs(subfilterCallbacks[AF_CONST_ALL].dropdownCallbacks) do
+        callbackEntry.isStandardAFDropdownFilter = true
         table.insert(callbackTable, callbackEntry)
     end
 
@@ -708,27 +414,30 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
     if groupName ~= AF_CONST_ALL then
         --insert global "All" filters for a "group". e.g. Group "Jewelry", entry "All" -> subfilterCallbacks[Jewelry].All
         for _, callbackEntry in ipairs(subfilterCallbacks[groupName].All.dropdownCallbacks) do
+            callbackEntry.isStandardAFDropdownFilter = true
             table.insert(callbackTable, callbackEntry)
         end
         --Subfilter is the ALL entry?
         if subfilterName == AF_CONST_ALL then
-            if keys[groupName] == nil then
-                d("--- ERROR --- [AF]util.BuildDropdownCallbacks-GroupName is missing in keys: " ..tostring(groupName) .. ". PLease contact the author of ".. tostring(AF.name) .. " at the website in the settings menu (link can be found at the top of the settings page)!")
+            local groupNameOfKeys = keys[groupName]
+            if groupNameOfKeys == nil then
+                d("--- ERROR --- [AF]util.BuildDropdownCallbacks-GroupName is missing in keys: " ..tostring(groupName) .. ". Please contact the author of ".. tostring(AF.name) .. " at the website in the settings menu (link can be found at the top of the settings page)!")
                 return
                 --else
                 --d("[AF].util.BuildDropdownCallbacks-GroupName: " ..tostring(groupName))
             end
-            --insert all default filters for each subfilter
-            for _, subfilterNameLoop in ipairs(keys[groupName]) do
+            --insert all default AdvancedFilters filters for each subfilter (see file data.lua -> table AF.subfilterCallbacks)
+            for _, subfilterNameLoop in ipairs(groupNameOfKeys) do
                 local currentSubfilterTable = subfilterCallbacks[groupName][subfilterNameLoop]
                 for idx, callbackEntry in ipairs(currentSubfilterTable.dropdownCallbacks) do
+                    callbackEntry.isStandardAFDropdownFilter = true
                     table.insert(callbackTable, callbackEntry)
                 end
             end
 
-            --insert all filters provided by addons
+            --insert all filters provided by plugins / other addons
             --but check if the current panel should show the addon filters for "all" too
-            if util.checkIfPanelShouldShowAddonAllDropdownFilters(AF.currentInventoryType) then
+            if util.checkIfPanelShouldShowAddonAllDropdownFilters(invOrFilterType) then
                 if doDebugOutput then d(">add addon dropdown filters to group's '" .. tostring(groupName) .."' 'ALL' filters") end
                 for _, addonTable in ipairs(subfilterCallbacks[groupName].addonDropdownCallbacks) do
                     insertAddon(addonTable, groupName, subfilterName)
@@ -736,9 +445,10 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
             end
             --Subfilter is NOT the ALL entry
         else
-            --insert filters for provided subfilter
+            --insert standard AdvancedFilters filters for provided subfilter
             local currentSubfilterTable = subfilterCallbacks[groupName][subfilterName]
             for _, callbackEntry in ipairs(currentSubfilterTable.dropdownCallbacks) do
+                callbackEntry.isStandardAFDropdownFilter = true
                 table.insert(callbackTable, callbackEntry)
             end
 
@@ -757,7 +467,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
 
     --insert global addon filters
     --but check if the current panel should show the addon filters for "all" too
-    if util.checkIfPanelShouldShowAddonAllDropdownFilters(AF.currentInventoryType) then
+    if util.checkIfPanelShouldShowAddonAllDropdownFilters(invOrFilterType) then
         --d(">show addon dropdown 'ALL' filters")
         for _, addonTable in ipairs(subfilterCallbacks.All.addonDropdownCallbacks) do
             insertAddon(addonTable, groupName, subfilterName)
@@ -766,480 +476,27 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
 
     return callbackTable
 end
+--======================================================================================================================
+-- -^- Dropdown box functions                                                                                       -^-
+--======================================================================================================================
 
-function util.GetLanguage()
-    local lang = GetCVar("language.2")
-    local supported = {
-        de = 1,
-        en = 2,
-        es = 3,
-        fr = 4,
-        ru = 5,
-        jp = 6,
+--======================================================================================================================
+-- -v- Inventory count functions                                                                                    -v-
+--======================================================================================================================
+--Do not update the inventories itemCount as it got no count label or no value to update
+--(e.g. smithing research panel)
+function util.DoNotUpdateInventoryItemCount(filterTypeToUse)
+    filterTypeToUse = filterTypeToUse or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    local doNotUpdateInventoryItemCountFilterPanels = {
+        [LF_SMITHING_RESEARCH]          = true,
+        [LF_JEWELRY_RESEARCH]           = true,
+        [LF_SMITHING_RESEARCH_DIALOG]   = true,
+        [LF_JEWELRY_RESEARCH_DIALOG]    = true,
     }
-
-    --check for supported languages
-    if(supported[lang] ~= nil) then return lang end
-
-    --return english if not supported
-    return "en"
-end
-
---thanks ckaotik
-function util.Localize(text)
-    if type(text) == 'number' then
-        -- get the string from this constant
-        text = GetString(text)
+    if doNotUpdateInventoryItemCountFilterPanels[filterTypeToUse] then
+        return true
     end
-    -- clean up suffixes such as ^F or ^S
-    return zo_strformat(SI_TOOLTIP_ITEM_NAME, text) or " "
-end
-
-function util.ThrottledUpdate(callbackName, timer, callback, ...)
-    if not callbackName or callbackName == "" or not callback then return end
-    local args
-    if ... ~= nil then
-        args = {...}
-    end
-    local function Update()
-        EVENT_MANAGER:UnregisterForUpdate(callbackName)
-        if args then
-            callback(unpack(args))
-        else
-            callback()
-        end
-    end
-    EVENT_MANAGER:UnregisterForUpdate(callbackName)
-    EVENT_MANAGER:RegisterForUpdate(callbackName, timer, Update)
-end
-
-function util.GetItemLink(slot)
-    --Supporrt for AutoCategory AddOn ->
-    -- Collapsable headers in the inventories & crafting stations
-    if slot == nil or type(slot) ~= "table" or (slot.isHeader ~= nil and slot.isHeader) then return end
-
-    if slot.bagId then
-        return GetItemLink(slot.bagId, slot.slotIndex)
-    else
-        return GetStoreItemLink(slot.slotIndex)
-    end
-end
-
-function util.BuildItemLink(itemId)
-    if itemId == nil then return nil end
-    return string.format("|H1:item:%d:%d:50:0:0:0:0:0:0:0:0:0:0:0:0:%d:%d:0:0:%d:0|h|h", itemId, 364, ITEMSTYLE_NONE, 0, 10000)
-end
-
-function util.IsRetraitPanelShown()
-    return ZO_RETRAIT_STATION_MANAGER:IsRetraitSceneShowing() or false
-end
-
-function util.IsCraftingPanelShown()
-    return (ZO_CraftingUtils_IsCraftingWindowOpen() or util.IsRetraitPanelShown()) or false
-end
-
-function util.GetCraftingType()
-    --[[
-        TradeskillType
-        CRAFTING_TYPE_ALCHEMY
-        CRAFTING_TYPE_BLACKSMITHING
-        CRAFTING_TYPE_CLOTHIER
-        CRAFTING_TYPE_ENCHANTING
-        CRAFTING_TYPE_INVALID
-        CRAFTING_TYPE_PROVISIONING
-        CRAFTING_TYPE_WOODWORKING
-        CRAFTING_TYPE_JEWELRYCRAFTING
-    ]]
-    return GetCraftingInteractionType() or CRAFTING_TYPE_INVALID
-end
-
-function util.GetInventoryFromCraftingPanel(libFiltersFilterPanelId)
-    if libFiltersFilterPanelId == nil then return end
-    local libFiltersFilterPanelId2Inventory = {
-        [LF_SMITHING_REFINE]        = controlsForChecks.smithing.refinementPanel.inventory,
-        --[LF_SMITHING_CREATION]      = controlsForChecks.smithing.creationPanel,
-        [LF_SMITHING_DECONSTRUCT]   = controlsForChecks.smithing.deconstructionPanel.inventory,
-        [LF_SMITHING_IMPROVEMENT]   = controlsForChecks.smithing.improvementPanel.inventory,
-        [LF_SMITHING_RESEARCH]      = controlsForChecks.smithing.researchPanel,
-        [LF_JEWELRY_REFINE]         = controlsForChecks.smithing.refinementPanel.inventory,
-        --[LF_JEWELRY_CREATION]       = controlsForChecks.smithing.creationPanel,
-        [LF_JEWELRY_DECONSTRUCT]    = controlsForChecks.smithing.deconstructionPanel.inventory,
-        [LF_JEWELRY_IMPROVEMENT]    = controlsForChecks.smithing.improvementPanel.inventory,
-        [LF_JEWELRY_RESEARCH]       = controlsForChecks.smithing.researchPanel,
-        [LF_ENCHANTING_CREATION]    = controlsForChecks.enchanting.inventory,
-        [LF_ENCHANTING_EXTRACTION]  = controlsForChecks.enchanting.inventory,
-        [LF_RETRAIT]                = controlsForChecks.retrait.retraitPanel.inventory,
-    }
-    if libFiltersFilterPanelId2Inventory[libFiltersFilterPanelId] == nil then return nil end
-    return libFiltersFilterPanelId2Inventory[libFiltersFilterPanelId]
-end
-
-function util.IsCraftingStationInventoryType(inventoryType)
-    local craftingInventoryTypes = {
-        [LF_SMITHING_REFINE]        = true,
-        [LF_SMITHING_CREATION]      = true,
-        [LF_SMITHING_DECONSTRUCT]   = true,
-        [LF_SMITHING_IMPROVEMENT]   = true,
-        [LF_SMITHING_RESEARCH]      = true,
-        [LF_JEWELRY_REFINE]         = true,
-        [LF_JEWELRY_CREATION]       = true,
-        [LF_JEWELRY_DECONSTRUCT]    = true,
-        [LF_JEWELRY_IMPROVEMENT]    = true,
-        [LF_JEWELRY_RESEARCH]       = true,
-        [LF_ENCHANTING_CREATION]    = true,
-        [LF_ENCHANTING_EXTRACTION]  = true,
-        [LF_RETRAIT]                = true,
-    }
-    local retVar = craftingInventoryTypes[inventoryType] or false
-    return retVar
-end
-
---Function to return a boolean value if the craftingPanel is using the worn bag ID as well.
---Use the LibFilters filterPanelid as parameter
-function util.GetCraftingPanelUsesWornBag(libFiltersFilterPanelId)
-    local craftingFilterPanelId2USesWornBag = {
-        [LF_SMITHING_REFINE]        = true,
-        [LF_SMITHING_CREATION]      = false,
-        [LF_SMITHING_DECONSTRUCT]   = true,
-        [LF_SMITHING_IMPROVEMENT]   = true,
-        [LF_SMITHING_RESEARCH]      = false,
-        [LF_JEWELRY_REFINE]         = false,
-        [LF_JEWELRY_CREATION]       = false,
-        [LF_JEWELRY_DECONSTRUCT]    = true,
-        [LF_JEWELRY_IMPROVEMENT]    = true,
-        [LF_JEWELRY_RESEARCH]       = false,
-        [LF_ENCHANTING_CREATION]    = false,
-        [LF_ENCHANTING_EXTRACTION]  = false,
-        [LF_RETRAIT]                = true,
-    }
-    local usesWornBag = craftingFilterPanelId2USesWornBag[libFiltersFilterPanelId] or false
-    return usesWornBag
-end
-
---Function to return the "predicate" and "filter" functions used at the different crafting types, as new inventory lists are build.
--->They will pre-filter and filter the inventory items.
---Use the LibFilters filterPanelId as parameter
-function util.GetPredicateAndFilterFunctionFromCraftingPanel(libFiltersFilterPanelId)
-    local craftingFilterPanelId2PredicateFunc = {
-        [LF_SMITHING_REFINE]        = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
-        [LF_SMITHING_CREATION]      = {nil, nil},
-        [LF_SMITHING_DECONSTRUCT]   = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
-        [LF_SMITHING_IMPROVEMENT]   = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingImprovement_DoesItemPassFilter},
-        [LF_SMITHING_RESEARCH]      = {nil, nil},
-        [LF_JEWELRY_REFINE]         = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
-        [LF_JEWELRY_CREATION]       = true,
-        [LF_JEWELRY_DECONSTRUCT]    = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingExtraction_DoesItemPassFilter},
-        [LF_JEWELRY_IMPROVEMENT]    = {ZO_SharedSmithingExtraction_IsExtractableItem, ZO_SharedSmithingImprovement_DoesItemPassFilter},
-        [LF_JEWELRY_RESEARCH]       = {nil, nil},
-        [LF_ENCHANTING_CREATION]    = {nil, nil},
-        [LF_ENCHANTING_EXTRACTION]  = {nil, nil},
-        [LF_RETRAIT]                = {ZO_RetraitStation_CanItemBeRetraited, ZO_RetraitStation_DoesItemPassFilter},
-    }
-    local predicateFunc, filterFunc
-    local funcs = craftingFilterPanelId2PredicateFunc[libFiltersFilterPanelId] or nil
-    if funcs and funcs[1] and funcs[2] then
-        predicateFunc, filterFunc = funcs[1], funcs[2]
-    end
-    return predicateFunc, filterFunc
-end
-
-function util.MapItemFilterType2CraftingStationFilterType(itemFilterType, filterPanelId, craftingType)
-    if filterPanelId == nil then return end
-    --[[
-        ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS = 1
-        ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR = 1
-        ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_WEAPONS = 2
-        ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR = 1
-        ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_WEAPONS = 2
-        --
-        ENCHANTING_MODE_CREATION    = 1
-        ENCHANTING_MODE_EXTRACTION  = 2
-    ]]
-    --Map the filter type (selected button, e.g. weapons) of a crafting station to the
-    --itemfilter type that is used for the filters (shown items)
-    local mapIFT2CSFT = {
-        --[[
-        [LF_SMITHING_CREATION] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_CREATE_ARMOR_SMITHING]       = SMITHING_FILTER_TYPE_ARMOR,
-                [ITEMFILTERTYPE_AF_CREATE_WEAPONS_SMITHING]     = SMITHING_FILTER_TYPE_WEAPONS,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_CREATE_ARMOR_CLOTHIER]       = SMITHING_FILTER_TYPE_ARMOR,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_CREATE_ARMOR_WOODWORKING]    = SMITHING_FILTER_TYPE_ARMOR,
-                [ITEMFILTERTYPE_AF_CREATE_WEAPONS_WOODWORKING]  = SMITHING_FILTER_TYPE_WEAPONS,
-            },
-        },
-        ]]
-        [LF_SMITHING_REFINE] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_REFINE_SMITHING]             = SMITHING_FILTER_TYPE_RAW_MATERIALS,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_REFINE_CLOTHIER]             = SMITHING_FILTER_TYPE_RAW_MATERIALS,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_REFINE_WOODWORKING]          = SMITHING_FILTER_TYPE_RAW_MATERIALS,
-            },
-        },
-        [LF_SMITHING_DECONSTRUCT] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = SMITHING_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = SMITHING_FILTER_TYPE_ARMOR,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = SMITHING_FILTER_TYPE_ARMOR,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = SMITHING_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = SMITHING_FILTER_TYPE_ARMOR,
-            },
-        },
-        [LF_SMITHING_IMPROVEMENT] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = SMITHING_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = SMITHING_FILTER_TYPE_ARMOR,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = SMITHING_FILTER_TYPE_ARMOR,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = SMITHING_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = SMITHING_FILTER_TYPE_ARMOR,
-            },
-
-        },
-        [LF_SMITHING_RESEARCH] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_SMITHING]            = SMITHING_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_SMITHING]              = SMITHING_FILTER_TYPE_ARMOR,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [ITEMFILTERTYPE_AF_ARMOR_CLOTHIER]              = SMITHING_FILTER_TYPE_ARMOR,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING]         = SMITHING_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_ARMOR_WOODWORKING]           = SMITHING_FILTER_TYPE_ARMOR,
-            }
-        },
-        --[[
-        [LF_JEWELRY_CREATION] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ITEMFILTERTYPE_AF_CREATE_JEWELRY]             = ITEMFILTERTYPE_AF_CREATE_JEWELRY,
-            },
-
-        },
-        ]]
-        [LF_JEWELRY_REFINE] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ITEMFILTERTYPE_AF_REFINE_JEWELRY]             = SMITHING_FILTER_TYPE_RAW_MATERIALS,
-            },
-
-        },
-        [LF_JEWELRY_DECONSTRUCT] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING]           = SMITHING_FILTER_TYPE_JEWELRY,
-            },
-        },
-        [LF_JEWELRY_IMPROVEMENT] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING]           = SMITHING_FILTER_TYPE_JEWELRY,
-            },
-
-        },
-        [LF_JEWELRY_RESEARCH] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ITEMFILTERTYPE_AF_JEWELRY_CRAFTING]           = SMITHING_FILTER_TYPE_JEWELRY,
-            },
-
-        },
-        [LF_ENCHANTING_CREATION] = {
-            [CRAFTING_TYPE_ENCHANTING] = {
-                --TODO: Enable if itemfiltertype subfilters for the runes work: ITEMFILTERTYPE_AF_RUNES_ENCHANTING,
-                --[[
-                [ITEMFILTERTYPE_AF_RUNES_ENCHANTING]       = ENCHANTING_MODE_CREATION,
-                ]]
-                [ITEMFILTERTYPE_ALL]                            = ENCHANTING_MODE_CREATION,
-            },
-        },
-        [LF_ENCHANTING_EXTRACTION] = {
-            [CRAFTING_TYPE_ENCHANTING] = {
-                [ITEMFILTERTYPE_AF_GLYPHS_ENCHANTING]           = ENCHANTING_MODE_EXTRACTION,
-            },
-        },
-        [LF_RETRAIT] = {
-            [CRAFTING_TYPE_INVALID] = {
-                [ITEMFILTERTYPE_AF_RETRAIT_WEAPONS] = SMITHING_FILTER_TYPE_WEAPONS,
-                [ITEMFILTERTYPE_AF_RETRAIT_ARMOR]   = SMITHING_FILTER_TYPE_ARMOR,
-                [ITEMFILTERTYPE_AF_RETRAIT_JEWELRY] = SMITHING_FILTER_TYPE_JEWELRY,
-            },
-        },
-    }
-    AF.mapIFT2CSFT = mapIFT2CSFT
-    if craftingType == nil then craftingType = util.GetCraftingType() end
-    if itemFilterType == nil or craftingType == nil or mapIFT2CSFT[filterPanelId] == nil or mapIFT2CSFT[filterPanelId][craftingType] == nil or mapIFT2CSFT[filterPanelId][craftingType][itemFilterType] == nil then return end
-    return mapIFT2CSFT[filterPanelId][craftingType][itemFilterType]
-end
-
-function util.MapCraftingStationFilterType2ItemFilterType(craftingStationFilterType, filterPanelId, craftingType)
-    if filterPanelId == nil then return end
-    --[[
-        ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_RAW_MATERIALS = 1
-        ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_ARMOR = 1
-        ZO_SMITHING_EXTRACTION_SHARED_FILTER_TYPE_WEAPONS = 2
-        ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_ARMOR = 1
-        ZO_SMITHING_IMPROVEMENT_SHARED_FILTER_TYPE_WEAPONS = 2
-        --
-        ENCHANTING_MODE_CREATION    = 1
-        ENCHANTING_MODE_EXTRACTION  = 2
-    ]]
-    --Map the filter type (selected button, e.g. weapons) of a crafting station to the
-    --itemfilter type that is used for the filters (shown items)
-    local mapCSFT2IFT = {
-        --[[
-        [LF_SMITHING_CREATION] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [SMITHING_FILTER_TYPE_ARMOR]        = ITEMFILTERTYPE_AF_CREATE_ARMOR_SMITHING,
-                [SMITHING_FILTER_TYPE_WEAPONS]      = ITEMFILTERTYPE_AF_CREATE_WEAPONS_SMITHING,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [SMITHING_FILTER_TYPE_ARMOR]        = ITEMFILTERTYPE_AF_CREATE_ARMOR_CLOTHIER,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [SMITHING_FILTER_TYPE_ARMOR]        = ITEMFILTERTYPE_AF_CREATE_ARMOR_WOODWORKING,
-                [SMITHING_FILTER_TYPE_WEAPONS]      = ITEMFILTERTYPE_AF_CREATE_WEAPONS_WOODWORKING,
-            },
-        },
-        ]]
-        [LF_SMITHING_REFINE] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_SMITHING,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_CLOTHIER,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_WOODWORKING,
-            },
-        },
-        [LF_SMITHING_DECONSTRUCT] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
-            },
-
-        },
-        [LF_SMITHING_IMPROVEMENT] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
-            },
-        },
-        [LF_SMITHING_RESEARCH] = {
-            [CRAFTING_TYPE_BLACKSMITHING] = {
-                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_SMITHING,
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_SMITHING,
-            },
-            [CRAFTING_TYPE_CLOTHIER] = {
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_CLOTHIER,
-            },
-            [CRAFTING_TYPE_WOODWORKING] = {
-                [SMITHING_FILTER_TYPE_WEAPONS] = ITEMFILTERTYPE_AF_WEAPONS_WOODWORKING,
-                [SMITHING_FILTER_TYPE_ARMOR] = ITEMFILTERTYPE_AF_ARMOR_WOODWORKING,
-            },
-        },
-        --[[
-        [LF_JEWELRY_CREATION] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [ITEMFILTERTYPE_AF_CREATE_JEWELRY]                  = ITEMFILTERTYPE_AF_CREATE_JEWELRY,
-            },
-
-        },
-        ]]
-        [LF_JEWELRY_REFINE] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [SMITHING_FILTER_TYPE_RAW_MATERIALS] = ITEMFILTERTYPE_AF_REFINE_JEWELRY,
-            },
-        },
-        [LF_JEWELRY_DECONSTRUCT] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [SMITHING_FILTER_TYPE_JEWELRY] = ITEMFILTERTYPE_AF_JEWELRY_CRAFTING,
-            },
-
-        },
-        [LF_JEWELRY_IMPROVEMENT] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [SMITHING_FILTER_TYPE_JEWELRY] = ITEMFILTERTYPE_AF_JEWELRY_CRAFTING,
-            },
-        },
-        [LF_JEWELRY_RESEARCH] = {
-            [CRAFTING_TYPE_JEWELRYCRAFTING] = {
-                [SMITHING_FILTER_TYPE_JEWELRY] = ITEMFILTERTYPE_AF_JEWELRY_CRAFTING,
-            },
-        },
-        [LF_ENCHANTING_CREATION] = {
-            [CRAFTING_TYPE_ENCHANTING] = {
-                [ENCHANTING_MODE_CREATION]  = ITEMFILTERTYPE_ALL, --TODO: Enable if itemfiltertype subfilters for the runes work: ITEMFILTERTYPE_AF_RUNES_ENCHANTING,
-            },
-        },
-        [LF_ENCHANTING_EXTRACTION] = {
-            [CRAFTING_TYPE_ENCHANTING] = {
-                [ENCHANTING_MODE_EXTRACTION] = ITEMFILTERTYPE_AF_GLYPHS_ENCHANTING,
-            },
-        },
-        [LF_RETRAIT] = {
-            [CRAFTING_TYPE_INVALID] = {
-                [SMITHING_FILTER_TYPE_WEAPONS]  = ITEMFILTERTYPE_AF_RETRAIT_WEAPONS,
-                [SMITHING_FILTER_TYPE_ARMOR]    = ITEMFILTERTYPE_AF_RETRAIT_ARMOR,
-                [SMITHING_FILTER_TYPE_JEWELRY]  = ITEMFILTERTYPE_AF_RETRAIT_JEWELRY,
-            },
-        },
-    }
-    AF.mapCSFT2IFT = mapCSFT2IFT
-    if craftingType == nil then craftingType = util.GetCraftingType() end
-    if craftingStationFilterType == nil or craftingType == nil or mapCSFT2IFT[filterPanelId] == nil or mapCSFT2IFT[filterPanelId][craftingType] == nil or mapCSFT2IFT[filterPanelId][craftingType][craftingStationFilterType] == nil then return end
-    local retVar = mapCSFT2IFT[filterPanelId][craftingType][craftingStationFilterType]
-    return retVar
-end
-
-function util.GetCraftingMode(inventoryType)
-    inventoryType = inventoryType or AF.currentInventory
-    local craftingMode
-    local craftingInventory = util.GetInventoryFromCraftingPanel(inventoryType)
-    local craftingModeOwner = craftingInventory.owner
-    if craftingModeOwner == controlsForChecks.enchanting then
-        craftingMode = craftingModeOwner.enchantingMode
-    elseif craftingModeOwner == controlsForChecks.smithing then
-        craftingMode = craftingInventory.filterType
-    elseif craftingModeOwner == controlsForChecks.retrait then
-        craftingMode = craftingInventory.filterType
-    end
-    return craftingMode
-end
-
---Slot is the bagId, coming from libFilters, helper function (e.g. deconstruction).
---Prepare the slot variable with bagId and slotIndex
-function util.prepareSlot(bagId, slotIndex)
-    local slot = {}
-    slot.bagId = bagId
-    slot.slotIndex = slotIndex
-    return slot
+    return false
 end
 
 --Add count of shown (filtered) items to the inventory: space/total (count)
@@ -1273,9 +530,10 @@ end
 --Update the inventory infobar lFreeSlot label with the item filtered count
 function util.updateInventoryInfoBarCountLabel(invType, isCraftingInvType, isCalledFromExternalAddon)
     invType = invType or AF.currentInventoryType
+    if util.DoNotUpdateInventoryItemCount(invType) then return end
     isCraftingInvType = isCraftingInvType or util.IsCraftingStationInventoryType(invType)
     isCalledFromExternalAddon = isCalledFromExternalAddon or false
---d("[util.updateInventoryInfoBarCountLabel]invType: " ..tostring(invType) .. ", isCraftingInvType: " .. tostring(isCraftingInvType) .. ", isCalledFromExternalAddon: " .. tostring(isCalledFromExternalAddon))
+    --d("[util.updateInventoryInfoBarCountLabel]invType: " ..tostring(invType) .. ", isCraftingInvType: " .. tostring(isCraftingInvType) .. ", isCalledFromExternalAddon: " .. tostring(isCalledFromExternalAddon))
     --Update the count of shown/filtered items in the inventory FreeSlots label
     if invType ~= nil then
         if not isCraftingInvType then
@@ -1300,6 +558,19 @@ function util.updateInventoryInfoBarCountLabel(invType, isCraftingInvType, isCal
     end
 end
 
+--Update the crafting table's inventory item count etc. from external addons
+function util.UpdateCraftingInventoryFilteredCount(invType)
+    if util.DoNotUpdateInventoryItemCount(invType) then return end
+    --d("[AF]util.UpdateCraftingInventoryFilteredCount - invType: " ..tostring(invType))
+    util.updateInventoryInfoBarCountLabel(invType, nil, true)
+end
+--======================================================================================================================
+-- -^- Inventory count functions                                                                                    -^-
+--======================================================================================================================
+
+--======================================================================================================================
+-- -v- IsShown functions                                                                                            -v-
+--======================================================================================================================
 --Check if a game scene is shown
 function util.IsSceneShown(sceneName)
 --d("[AF]util.IsSceneShown, sceneName: " ..tostring(sceneName))
@@ -1312,7 +583,7 @@ function util.IsSceneShown(sceneName)
     return false
 end
 
---Check if a LibFilters-2.0 filterPanelId (or a related control) is shown
+--Check if a LibFilters-3.0 filterPanelId (or a related control) is shown
 function util.IsFilterPanelShown(libFiltersFilterPanelId)
 --d("[AF]IsFilterPanelShown: " ..tostring(libFiltersFilterPanelId))
     if libFiltersFilterPanelId == nil then return false end
@@ -1323,11 +594,13 @@ function util.IsFilterPanelShown(libFiltersFilterPanelId)
     local controlBankDeposit = controlsForChecks.bankBackpack
     local controlGuildBankDeposit = controlsForChecks.guildBankBackpack
     local controlGuildStoreSell = controlsForChecks.guildStoreSellBackpack
+    local controlsFence = controlsForChecks.fence
     local scenesForChecks = AF.scenesForChecks
     local sceneNameStoreVendor = scenesForChecks.storeVendor
     local sceneNameBankDeposit = scenesForChecks.bank
     local sceneNameGuildBankDeposit = scenesForChecks.guildBank
     local sceneNameGuildStoreSell = scenesForChecks.guildStoreSell
+    local sceneNameFence = scenesForChecks.fence
     local filterPanelId2TrueControl = {
         [LF_VENDOR_BUY]         = function() return not controlVendorBuy:IsHidden() and controlInventory:IsHidden() and controlVendorBuyback:IsHidden() and controlVendorRepair:IsHidden() or false end,
         [LF_VENDOR_SELL]        = function() return controlVendorBuy:IsHidden() and not controlInventory:IsHidden() and controlVendorBuyback:IsHidden() and controlVendorRepair:IsHidden() or false end,
@@ -1337,6 +610,8 @@ function util.IsFilterPanelShown(libFiltersFilterPanelId)
         [LF_GUILDBANK_DEPOSIT]  = controlInventory,
         [LF_HOUSE_BANK_DEPOSIT] = controlInventory,
         [LF_GUILDSTORE_SELL]    = controlGuildStoreSell,
+        [LF_FENCE_SELL]         = function() return (not controlsFence.control:IsHidden() and controlsFence.mode == ZO_MODE_STORE_SELL_STOLEN) or false end,
+        [LF_FENCE_LAUNDER]      = function() return (not controlsFence.control:IsHidden() and controlsFence.mode == ZO_MODE_STORE_LAUNDER) or false end,
     }
     local filterPanelId2FalseControl = {
         [LF_BANK_DEPOSIT]       = controlBankDeposit,
@@ -1352,6 +627,8 @@ function util.IsFilterPanelShown(libFiltersFilterPanelId)
         [LF_GUILDBANK_DEPOSIT]  = sceneNameGuildBankDeposit,
         [LF_HOUSE_BANK_DEPOSIT] = sceneNameBankDeposit,
         [LF_GUILDSTORE_SELL]    = sceneNameGuildStoreSell,
+        [LF_FENCE_SELL]         = sceneNameFence,
+        [LF_FENCE_LAUNDER]      = sceneNameFence,
     }
     local goOn = true
     local trueSceneName = filterPanelId2SceneName[libFiltersFilterPanelId] or nil
@@ -1416,6 +693,19 @@ function util.IsFilterPanelShown(libFiltersFilterPanelId)
     return true
 end
 
+--Check if the craftbag is shown as the groupName at the craftbag is different than non-craftbag
+--e.g. the groupName "Alchemy" is the normal groupName "Crafting" with subfilterName "Alchemy"
+function util.IsCraftBagShown()
+    return not ZO_CraftBag:IsHidden()
+end
+--======================================================================================================================
+-- -^- IsShown functions                                                                                            -^-
+--======================================================================================================================
+
+--======================================================================================================================
+-- -v- Subfilter bar functions                                                                                      -v-
+--======================================================================================================================
+--Should the subfilter bar not be shown?
 function util.CheckIfNoSubfilterBarShouldBeShown(currentFilter)
     local abort = false
     --Is the stable vendor shown? Abort, as there are no subfilter bars
@@ -1423,36 +713,343 @@ function util.CheckIfNoSubfilterBarShouldBeShown(currentFilter)
     return abort
 end
 
---Checks if other addons have registered filter functions which should be run on util.RefreshSubfilterBar as well
---to check if the subfilter bar button should be greyed out.
--->Will return true if no other addons have registered any filters for the inventoryType, craftingType and filterType
-function util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(slotData, inventoryType, craftingType, libFiltersPanelId)
-    if slotData == nil or slotData.bagId == nil or slotData.slotIndex == nil
-        or inventoryType == nil or craftingType == nil or libFiltersPanelId == nil then return true end
---d("[AF]util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters, inventoryType: " ..tostring(inventoryType) .. ", craftingType: " .. tostring(craftingType) .. ", libFiltersPanelId: " .. tostring(libFiltersPanelId))
-    --AF.SubfilterRefreshCallbacks contain the externally registered filters, from other addons, for the refresh of subfilterBars
-    local subfilterRefreshCallbacks
-    if AF.SubfilterRefreshCallbacks == nil or AF.SubfilterRefreshCallbacks[inventoryType] == nil
-        or AF.SubfilterRefreshCallbacks[inventoryType][craftingType] == nil or AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId] == nil then return true end
-    subfilterRefreshCallbacks = AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId]
-    if subfilterRefreshCallbacks == nil then return true end
-    local retVar = true
-    for externalAddonName, callbackFunc in pairs(subfilterRefreshCallbacks) do
-        if callbackFunc ~= nil and type(callbackFunc) == "function" then
-            local callbackFuncResult = callbackFunc(slotData)
---d(">[AF]RefreshSubFilterbar, externalAddonName: " .. tostring(externalAddonName) .. ", result: " ..tostring(callbackFuncResult))
-            retVar = callbackFuncResult
-            if retVar == false then return false end
-        end
+--Abort the subfilterbar refresh?
+function util.AbortSubfilterRefresh(inventoryType)
+    if inventoryType == nil then return true end
+    local doAbort = false
+    local subFilterRefreshAbortInvTypes = AF.abortSubFilterRefreshInventoryTypes
+    --Abort the subfilter bar refresh at some panels (and always at crafting panels->they will be updated with their own update functions)
+    if subFilterRefreshAbortInvTypes[inventoryType] or util.IsCraftingStationInventoryType(inventoryType) then
+        doAbort = true
     end
-    return retVar
+    return doAbort
 end
 
---Update the crafting table's inventory item count etc. from external addons
-function util.UpdateCraftingInventoryFilteredCount(invType)
-    if not util.DoNotUpdateInventoryItemCount(invType) then
-        --d("[AF]util.UpdateCraftingInventoryFilteredCount - invType: " ..tostring(invType))
-        util.updateInventoryInfoBarCountLabel(invType, nil, true)
+--Refresh the subfilter button bar and disable non-given/non-matching subfilter buttons ("grey-out" the buttons)
+function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
+    calledFromExternalAddon = calledFromExternalAddon or ""
+    local inventoryType = subfilterBar.inventoryType
+    local craftingType = util.GetCraftingType()
+    local isNoCrafting = not util.IsCraftingPanelShown()
+    local realInvTypes
+    local inventory, inventorySlots
+    local currentFilter
+    local bagWornItemCache
+    --d("[AF]SubFilter refresh, calledFromExternalAddon: " .. tostring(calledFromExternalAddon) .. ", invType: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar) .. ", craftingType: " .. tostring(craftingType) .. ", isNoCrafting: " .. tostring(isNoCrafting))
+    --AF._currentSubfilterBarAtRefreshCheck = subfilterBar
+
+    --Abort the subfilterBar refresh method? Or check for crafting inventory types and return teh correct inventory types then
+    if util.AbortSubfilterRefresh(inventoryType) then
+        --Try to map the fake inventory type from LibFilters to the real ingame inventory type
+        realInvTypes = util.MapLibFiltersInventoryTypeToRealInventoryType(inventoryType)
+        if realInvTypes == nil then
+            --d("<SubFilter refresh aborted: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar))
+            return
+        end
+        --Improvement panel: BAG_WORN needs to be checked as well later on!
+        if inventoryType == LF_SMITHING_IMPROVEMENT or inventoryType == LF_JEWELRY_IMPROVEMENT or inventoryType == LF_RETRAIT then
+            bagWornItemCache = SHARED_INVENTORY:GetOrCreateBagCache(BAG_WORN)
+        end
+        --d("<SubFilter refresh - go on: " .. tostring(#realInvTypes) .. ", subfilterBar: " ..tostring(subfilterBar) .. ", bagWornToo?: " ..tostring(bagWornItemCache ~= nil))
+    else
+        realInvTypes = {}
+        table.insert(realInvTypes, inventoryType)
+    end
+    --Setting to gray out the buttons is enbaled?
+    local grayOutSubFiltersWithNoItems  = AF.settings.grayOutSubFiltersWithNoItems
+    --Check if a bank/guild bank/house storage is opened
+    local isVendorPanel                 = util.IsFilterPanelShown(LF_VENDOR_SELL) or false
+    local isFencePanel                  = util.IsFilterPanelShown(LF_FENCE_SELL) or false
+    local isLaunderPanel                = util.IsFilterPanelShown(LF_FENCE_LAUNDER) or false
+    local isBankDepositPanel            = AF.bankOpened and util.IsFilterPanelShown(LF_BANK_DEPOSIT) or false
+    local isGuildBankDepositPanel       = AF.guildBankOpened  and util.IsFilterPanelShown(LF_GUILDBANK_DEPOSIT) or false
+    local isHouseBankDepositPanel       = AF.houseBankOpened  and util.IsFilterPanelShown(LF_HOUSE_BANK_DEPOSIT) or false
+    local isABankDepositPanel           = (isBankDepositPanel or isGuildBankDepositPanel or isHouseBankDepositPanel) or false
+    local isGuildStoreSellPanel         = util.IsFilterPanelShown(LF_GUILDSTORE_SELL) or false
+    local isRetraitStation              = util.IsRetraitPanelShown()
+    local isJunkInvButtonActive         = subfilterBar.name == (AF.inventoryNames[INVENTORY_BACKPACK] .. "_" .. AF.filterTypeNames[ITEMFILTERTYPE_JUNK]) or false
+    local libFiltersPanelId             = util.GetCurrentFilterTypeForInventory(inventoryType)
+--d(">isFencePanel: " .. tostring(isFencePanel) .. ", isLaunderPanel: " .. tostring(isLaunderPanel) .. ", isVendorPanel: " .. tostring(isVendorPanel) .. ", isBankDepositPanel: " .. tostring(isBankDepositPanel) .. ", isGuildBankDepositPanel: " .. tostring(isGuildBankDepositPanel) .. ", isHouseBankDepositPanel: " .. tostring(isHouseBankDepositPanel) .. ", isRetraitStation: " .. tostring(isRetraitStation) .. ", isJunkInvButtonActive: " .. tostring(isJunkInvButtonActive) .. ", libFiltersPanelId: " .. tostring(libFiltersPanelId) .. ", grayOutSubfiltersWithNoItems: " ..tostring(grayOutSubFiltersWithNoItems))
+
+    local doEnableSubFilterButtonAgain = false
+    local breakInventorySlotsLoopNow = false
+    ------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------
+    --Check subfilterbutton for items, using the filter function and junk checks (only for non-crafting stations)
+    local function checkBagContentsNow(bag, bagData, realInvType, button)
+        doEnableSubFilterButtonAgain = false
+        breakInventorySlotsLoopNow = false
+        local hasAnyJunkInBag = false
+        if isNoCrafting and bag ~= BAG_WORN then
+            hasAnyJunkInBag = HasAnyJunk(bag, false)
+        end
+        local bagDataToCheck = {}
+        --Worn items? The given data is quite different then the PLAYER_INVENTORY data so one needs to map it
+        if bag == BAG_WORN then
+            bagDataToCheck[1] = bagData
+        else
+            bagDataToCheck = bagData
+        end
+        local itemsFound = 0
+        for _, itemData in pairs(bagDataToCheck) do
+            breakInventorySlotsLoopNow = false
+            local isItemSellable = false
+            local isItemStolen = false
+            local isItemJunk = false
+            local isItemBankAble = true
+            local isBOPTradeable = false
+            local isBound = false
+            local passesCallback
+            local passesFilter
+            if isNoCrafting then
+                passesCallback = button.filterCallback(itemData)
+                --Like crafting tables the junk inventory got different itemTypes in one section (ITEMFILTERTYPE_JUNK = 9). So the filter comparison does not work and the callback should be enough to check.
+                passesFilter = passesCallback and ((isJunkInvButtonActive and currentFilter == ITEMFILTERTYPE_JUNK)
+                        or (util.IsItemFilterTypeInItemFilterData(itemData.filterData, currentFilter)))
+                        and util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(itemData, realInvType, craftingType, libFiltersPanelId)
+            else
+                passesCallback = button.filterCallback(itemData)
+                --Todo: ItemData.filterData is not reliable at crafting stations as the items are collected from several different bags!
+                --Todo: Thus the filter is always marked as "passed". Is this correct and does it work properly? To test!
+                --> Set the currentFilter = itemData.filterData[1], which should be the itemType of the current item
+                --currentFilter = itemData.filterData[1]
+                local otherAddonUsesFilters = util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(itemData, realInvType, craftingType, libFiltersPanelId)
+                passesFilter = passesCallback and otherAddonUsesFilters
+                --Do more filter checks for the crafting types, if the filter passes until now
+                if passesFilter then
+                    --Jewelry crafting
+                    if craftingType == CRAFTING_TYPE_JEWELRYCRAFTING then
+                        --Jewelry deconstruction
+                        if libFiltersPanelId == LF_JEWELRY_DECONSTRUCT then
+                            local itemLink = GetItemLink(itemData.bagId, itemData.slotIndex)
+                            passesFilter = passesFilter and not IsItemLinkForcedNotDeconstructable(itemLink)
+                        end
+                        --Retrait
+                    elseif craftingType == CRAFTING_TYPE_NONE then
+                        if libFiltersPanelId == LF_RETRAIT and isRetraitStation then
+                            passesFilter = passesFilter and CanItemBeRetraited(itemData.bagId, itemData.slotIndex)
+                        end
+                    end
+                end
+
+
+                -- TODO: Check retrait station subfilter buttons greying out properly
+                -- TODO: Check jewelry refine subfilter buttons greying out properly
+                --if passesCallback and passesFilter then
+                --if libFiltersPanelId == LF_JEWELRY_REFINE then
+                --    local itemLink = GetItemLink(itemData.bagId, itemData.slotIndex)
+                --    local itemType = GetItemLinkItemType(itemLink)
+                --    if itemType == ITEMTYPE_JEWELRY_TRAIT or itemType == ITEMTYPE_JEWELRY_RAW_TRAIT or itemType == ITEMTYPE_JEWELRYCRAFTING_BOOSTER or
+                --    itemType == ITEMTYPE_JEWELRYCRAFTING_MATERIAL or itemType == ITEMTYPE_JEWELRYCRAFTING_RAW_BOOSTER or itemType == ITEMTYPE_JEWELRYCRAFTING_RAW_MATERIAL then
+                --d("[AF]SubfilterRefresh: " .. itemLink .. ", passesCallback: " .. tostring(passesCallback) .. ", passesFilter: " ..tostring(passesFilter))
+                --end
+                --end
+            end
+            if passesCallback and passesFilter then
+                --Check if item is junk and do not pass the callback then!
+                if hasAnyJunkInBag then
+                    isItemJunk = IsItemJunk(itemData.bagId, itemData.slotIndex)
+                end
+                --Check if the item can be sold
+                if isVendorPanel or isFencePanel then
+                    local itemSellInformation = GetItemLinkSellInformation(GetItemLink(itemData.bagId, itemData.slotIndex))
+                    --[[
+                    ItemSellInformation
+                            * ITEM_SELL_INFORMATION_CANNOT_SELL = 4
+                            * ITEM_SELL_INFORMATION_CAN_BE_RESEARCHED = 3
+                            * ITEM_SELL_INFORMATION_INTRICATE = 2
+                            * ITEM_SELL_INFORMATION_PRIORITY_SELL = 1
+                            * ITEM_SELL_INFORMATION_NONE = 0
+                    ]]
+                    if itemSellInformation == ITEM_SELL_INFORMATION_CANNOT_SELL then
+                        isItemSellable = false
+                    else
+                        isItemSellable = true
+                    end
+                end
+                --Check if item is stolen (crafting or banks)
+                if isABankDepositPanel or isVendorPanel or not isNoCrafting or isGuildStoreSellPanel or isFencePanel or isLaunderPanel then
+                    isItemStolen = IsItemStolen(itemData.bagId, itemData.slotIndex)
+                end
+                --Checks for bound and BOP tradeable
+                if isGuildBankDepositPanel or isGuildStoreSellPanel then
+                    isBound         = IsItemBound(itemData.bagId, itemData.slotIndex)
+                    isBOPTradeable  = IsItemBoPAndTradeable(itemData.bagId, itemData.slotIndex)
+                end
+                --Is an item below a subfilter but cannot be deposit/sold (bank, guild bank, vendor):
+                --The subfilter button will be still enabled as there are no items to check (will be filtered by ESO vanilla UI BEFORE AF can check them)
+                --if isBankDepositPanel or isHouseBankDepositPanel then
+                --Check if items are not bankable:
+                --isItemBankAble =
+                --end
+                if isGuildBankDepositPanel then
+                    --Check if items are not guild bankable:
+                    --Stolen items
+                    --Bound items
+                    --Bound but tradeable items
+                    isItemBankAble = not isBound and not isBOPTradeable
+                end
+                ----------------------------------------------------------------------------------------
+                --[No crafting panel] (e.g. inventory, bank, guild bank, mail, trade, craftbag):
+                --Item is:
+                -->no junk
+                -->or at junk panel and item is junk
+                if isNoCrafting then
+                    --[Bank/Guild Bank deposit]
+                    --Item is:
+                    -->Not stolen
+                    -->Bankable (unbound)
+                    -->not junk
+                    -->Or junk, and junk inventory filter button is active
+                    if isABankDepositPanel then
+                        doEnableSubFilterButtonAgain = not isItemStolen and isItemBankAble and (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
+
+                        --[Vendor]
+                        --Item is:
+                        -->Not stolen
+                        -->not junk
+                        -->Or junk, and junk inventory filter button is active
+                        -->is sellable
+                    elseif isVendorPanel then
+                        doEnableSubFilterButtonAgain = not isItemStolen and (not isItemJunk or (isJunkInvButtonActive and isItemJunk)) and isItemSellable
+
+                        --[Fence sell]
+                        --Item is:
+                        -->Stolen
+                        -->not junk
+                        -->Or junk, and junk inventory filter button is active
+                        -->sellable at vendor
+                    elseif isFencePanel then
+                        doEnableSubFilterButtonAgain = isItemStolen and (not isItemJunk or (isJunkInvButtonActive and isItemJunk)) and isItemSellable
+
+                    --[Fence launder]
+                    --Item is:
+                    -->Stolen
+                    -->not junk
+                    -->Or junk, and junk inventory filter button is active
+                    elseif isLaunderPanel then
+                        doEnableSubFilterButtonAgain = isItemStolen and (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
+
+                    --[Guild store list/sell]
+                    --Item is:
+                    -->Not stolen
+                    -->not junk
+                    -->not bound
+                    elseif isGuildStoreSellPanel then
+                        doEnableSubFilterButtonAgain = not isItemStolen and not isItemJunk and not isBound and not isBOPTradeable
+
+                        --[Normal inventory, mail, trade, craftbag]
+                        --Item is:
+                        -->not junk
+                        -->Or junk, and junk inventory filter button is active
+                    else
+                        doEnableSubFilterButtonAgain = (not isItemJunk or (isJunkInvButtonActive and isItemJunk))
+                    end
+                        ----------------------------------------------------------------------------------------
+                        --[Crafting panel] (e.g. refine, creation, deconstruction, improvement, research, recipes, extraction, retrait):
+                        --Item is:
+                        -->Not stolen (currently deactivated!)
+                else
+                    --if isRetraitStation and button.name == "Shield" then
+                    --d(">" .. GetItemLink(itemData.bagId, itemData.slotIndex) .. " passesCallback: " ..tostring(passesCallback) .. ", otherAddonUsesFilters: " .. tostring(otherAddonUsesFilters) .. ", passesFilter: " ..tostring(passesFilter) .. ", canBeRetraited: " .. tostring(CanItemBeRetraited(itemData.bagId, itemData.slotIndex)) .. " - doEnableSubFilterButtonAgain: " ..tostring(doEnableSubFilterButtonAgain))
+                    --end
+                    itemsFound = itemsFound +1
+                    --d("<<< Crafting station: " ..tostring(itemsFound))
+                    --doEnableSubFilterButtonAgain = not isItemStolen
+                    doEnableSubFilterButtonAgain = (itemsFound > 0) or false
+                end
+                if doEnableSubFilterButtonAgain then
+                    breakInventorySlotsLoopNow = true
+                    break
+                end
+            else
+                --d("<<< did not pass filter or callback!")
+            end
+        end -- for ... itemData in bagData
+        --d(">breakInventorySlotsLoopNow: " ..tostring(breakInventorySlotsLoopNow) .. ", doEnableSubFilterButtonAgain: " .. tostring(doEnableSubFilterButtonAgain))
+    end
+    ------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------
+
+    --Check if filters apply to the subfilter and change the color of the subfilter button
+    for _, button in ipairs(subfilterBar.subfilterButtons) do
+        --d(">==============================>\nButtonName: " .. tostring(button.name))
+        if button.name ~= AF_CONST_ALL then
+            --Setting to disable subfilter buttons with no items is enabled?
+            if grayOutSubFiltersWithNoItems then
+                --d("Gray out wished!")
+                doEnableSubFilterButtonAgain = false
+                breakInventorySlotsLoopNow = false
+                --Disable button first (May be enabled further down again if checks allow it)
+                if button.clickable then
+                    --d(">disabling button!")
+                    button.texture:SetColor(.3, .3, .3, .9)
+                    button:SetEnabled(false)
+                    button.clickable = false
+                end
+                --Check each inventory now
+                for _, realInvType in pairs(realInvTypes) do
+                    if breakInventorySlotsLoopNow then break end
+                    breakInventorySlotsLoopNow = false
+                    inventory = PLAYER_INVENTORY.inventories[realInvType]
+                    if inventory ~= nil and inventory.slots ~= nil then
+                        --Get the current filter. Normally this comes from the inventory. Crafting currentFilter determination is more complex!
+                        if isNoCrafting then
+                            currentFilter = inventory.currentFilter
+                            --d(">currentFilter: " .. tostring(currentFilter))
+                        else
+                            --Todo: ItemData.filterData is not reliable at crafting stations as the items are collected from several different bags!
+                            --Todo: Thus the filter is always marked as "passed". Is this correct and does it work properly? To test!
+                            --Todo: Enable this section again if currentFilter is needed further down in this function!
+                            --[[
+                            local invType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+                            local craftingFilter = util.GetCraftingTablePanelFilter(invType)
+                            currentFilter = util.MapCraftingStationFilterType2ItemFilterType(craftingFilter, invType, craftingType)
+                            ]]
+                        end
+                        inventorySlots = inventory.slots
+                        --Check subfilterbutton for items, using the filter function and junk checks (only for non-crafting stations)
+                        for bag, bagData in pairs(inventorySlots) do
+                            if breakInventorySlotsLoopNow then break end
+                            checkBagContentsNow(bag, bagData, realInvType, button)
+                            if doEnableSubFilterButtonAgain then
+                                --d(">>> !!! subfilterButton got enabled again !!!")
+                                breakInventorySlotsLoopNow = true
+                            end
+                        end
+                    end
+                    if doEnableSubFilterButtonAgain then
+                        --d(">>>> !!!! subfilterButton got enabled again !!!!")
+                        breakInventorySlotsLoopNow = true
+                    end
+                end
+                --Check the worn items as well? (for LF_SMITHING_IMPROVEMENT e.g.)
+                if not doEnableSubFilterButtonAgain and bagWornItemCache ~= nil then
+                    for _, data in pairs(bagWornItemCache) do
+                        checkBagContentsNow(BAG_WORN, data, INVENTORY_BACKPACK, button)
+                        if doEnableSubFilterButtonAgain then
+                            --d(">>>>> !!!!! BAG_WORN: subfilterButton got enabled again !!!!")
+                            breakInventorySlotsLoopNow = true
+                            break
+                        end
+                    end
+                end
+            else
+                --d("No gray out wished!")
+                --Setting to disable subfilter buttons with no items is disabled:
+                --Enable all subfilter buttons again
+                doEnableSubFilterButtonAgain = true
+            end
+            --Enable the subfilter button again now?
+            if doEnableSubFilterButtonAgain then
+                --d(">Enabling button again: " .. tostring(button.name))
+                button.texture:SetColor(1, 1, 1, 1)
+                button:SetEnabled(true)
+                button.clickable = true
+            end
+        end
     end
 end
 
@@ -1469,12 +1066,109 @@ function util.GetListControlForSubfilterBarReanchor(inventory, p_currentFilter, 
     end
     return listControlForSubfilterBarReanchor, moveInvBottomBarDown
 end
+--======================================================================================================================
+-- -^- Subfilter bar functions                                                                                      -^-
+--======================================================================================================================
 
---Clear the custom variables used to filter the horizontal scrolling list entries
-function util.ClearResearchPanelCustomFilters()
-    --Reset the custom data for the loop now
-    if controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues then
-        controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues = nil
+--======================================================================================================================
+-- -v- Filter functions                                                                                             -v-
+--======================================================================================================================
+
+--Apply the LIbFilters filter to the inventory now
+function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
+
+    local LibFilters        = util.LibFilters
+    local callback          = button.filterCallback
+    local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    local delay             = 0
+    local buttonName        = button.name
+
+--d("[AF]ApplyFilter " .. tostring(buttonName) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterTypeToUse) .. " and inventoryType " .. tostring(AF.currentInventoryType))
+
+    --if something isn't right, abort
+    if callback == nil then
+        d("[AdvancedFilters]ERROR - Callback was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
+        return
+    end
+    if filterTypeToUse == nil then
+        d("[AdvancedFilters]ERROR - FilterType was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
+        return
+    end
+
+    --Check if the parameter to reset the current dropdown filter to "All" was registered
+    -->This is needed if the dropdown filters rely on the currently "shown" (and thus already filtered) inventory items
+    -->to only use these for their filter functions/comparisons, and not ALL items of the inventories involved
+    if filterTag == AF_CONST_DROPDOWN_FILTER and button.filterResetAtStart then
+        delay = button.filterResetAtStartDelay or 50 --Set delay so the next dropdown filter will be called AFTER evertyhing got updated
+        --Clear the filters and refresh the visible inventory items now.
+        --Do not change the dropdownbox entry to "ALL" or the "lastSelectedDropdownEntry" will be changed as well!
+        --Clear current filters without an update
+        LibFilters:UnregisterFilter(filterTag)
+        --Update the inventory to show all items unfiltered again
+        LibFilters:RequestUpdate(filterTypeToUse)
+    end
+
+    --Call deleyed if the dropdown filter was reset to all
+    zo_callLater(function()
+        --Check if a function should be executed before the filters get applied
+        local filterStartCallback = button.filterStartCallback
+        if filterStartCallback and type(filterStartCallback) == "function" then
+            filterStartCallback()
+        end
+        --Only for the dropdown box filters and ONLY for non-standard AdvancedFilters dropdown entries
+        -->(isStandardAFDropdownFilter is added in function AF.util.BuildDropdownCallbacks as AF_FilterBar:ActivateButton() is called)
+        if filterTag == AF_CONST_DROPDOWN_FILTER and not button.isStandardAFDropdownFilter then
+            --Check if the research panel is opened and build the prefilter data for the horizontal scroll list
+            --depending on the currently selected subfilterBar button's name and group
+            -->First parameter "true" will start the prefiltering
+            --->Will check table AF.subfilterCallbacks with the group and name to get the entry of the selected button.
+            --->Then it will use the data in the subTable "filterForAll" to prefiltzer some values like itemType, equipType, armorType or traitType
+            util.CheckForResearchPanelAndRunFilterFunction(true, nil, nil, nil)
+        end
+
+        --first, clear current filters without an update
+        -->if not cleared before!
+        if not button.filterResetAtStart then
+            LibFilters:UnregisterFilter(filterTag)
+        end
+        --then register new one and hand off update parameter
+        LibFilters:RegisterFilter(filterTag, filterTypeToUse, callback)
+        if requestUpdate == true then LibFilters:RequestUpdate(filterTypeToUse) end
+
+        --If the inventory got a freeSlotLabel and itemCount: Update it
+        if not util.DoNotUpdateInventoryItemCount(filterTypeToUse) then
+            --Update the count of filtered/shown items in the inventory FreeSlot label
+            --Delay this function call as the data needs to be filtered first!
+            zo_callLater(function()
+                --Update the shown filtered item count at the inventory bottom line
+                util.UpdateCraftingInventoryFilteredCount(AF.currentInventoryType)
+
+                --Run an end callback function now?
+                local endCallback = button.filterEndCallback
+                if endCallback and type(endCallback) == "function" then
+                    endCallback()
+                end
+            end, 50)
+        end
+    end, delay)
+end
+
+--Remove all registered filters of buttons and dropdown boxes and update the inventory
+function util.RemoveAllFilters()
+    local LibFilters = util.LibFilters
+    local filterType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+
+    LibFilters:UnregisterFilter(AF_CONST_BUTTON_FILTER)
+    LibFilters:UnregisterFilter(AF_CONST_DROPDOWN_FILTER)
+
+    if filterType ~= nil then LibFilters:RequestUpdate(filterType) end
+end
+
+--Check if an item's filterData contains an itemFilterType
+function util.IsItemFilterTypeInItemFilterData(itemFilterData, itemFilterType)
+    if itemFilterData == nil or itemFilterType == nil then return false end
+    for _, itemFilterTypeInFilterData in ipairs(itemFilterData) do
+        if itemFilterTypeInFilterData == itemFilterType then return true end
     end
 end
 
@@ -1484,70 +1178,110 @@ function util.FilterHorizontalScrollList(runPrefilterForAllSelection, horizontal
     if not horizontalScrollList then return false end
     runPrefilterForAllSelection = runPrefilterForAllSelection or false
     --d("[AF]util.FilterHorizontalScrollList")
-    local craftingType = GetCraftingInteractionType()
-    if craftingType == CRAFTING_TYPE_INVALID then return false end
-    local researchLineListArmorTypes = AF.researchLinesToArmorType[craftingType]
-    local researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = AF.researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[craftingType]
-    local researchLineListIndexOfWeaponOrArmorOrJewelryType = 0
-    --Rebuild the list but filter the items by applying new filter to the current libFilter filterPanelId
-    --which then will be used inside the :Refresh() function of the panel
 
-    --Prefilter some entries if the ALL button was chosen?
-    local filterOrEquipTypesPreFiltered, armorTypesPreFiltered
-    if runPrefilterForAllSelection then
-        --Check which button is currently active. If it's not ALL then the ALL dropdown entry was selected.
-        --Check which button is active and prefilter the list with the determined filterTypes, equipTypes and/or armorTypes
-        filterOrEquipTypesPreFiltered, armorTypesPreFiltered = util.PreFilterWithSubfilterBarButtonFilterForAll()
-    end
-    --Add the prefilters to the current filters
-    if filterOrEquipTypesPreFiltered then
-        if not filterOrEquipTypes then
-            filterOrEquipTypes = filterOrEquipTypesPreFiltered
-        else
-            if type(filterOrEquipTypes) == "table" then
-                for _, filterOrEquipType in ipairs(filterOrEquipTypesPreFiltered) do
+    --==================================================================================================================
+    -- -v- SMITHING Research horizontal scrolllist?                                                                 -v-
+    --==================================================================================================================
+    if horizontalScrollList == controlsForChecks.researchLineList then
+        local craftingType = util.GetCraftingType()
+        if craftingType == CRAFTING_TYPE_INVALID then return false end
+        local researchLineListArmorTypes = AF.researchLinesToArmorType[craftingType]
+        local filterPanelId = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+        local craftingStationFilter = util.GetCraftingTablePanelFilter(filterPanelId)
+        local researchLineListIndicesOfWeaponOrArmorOrJewelryTypesBase = AF.researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[craftingType]
+        --local craftingPanel =  util.GetCraftingTablePanel(filterPanelId)
+        --d("[AF]util.FilterHorizontalScrollListcraftingType: " ..tostring(craftingType) .. ", craftingPanel: " .. tostring(craftingPanel.control:GetName()) .. ", craftingFilter: " ..tostring(craftingStationFilter))
+        if not researchLineListIndicesOfWeaponOrArmorOrJewelryTypesBase then
+            d("[AF]Abort->Crafting table crafting type (".. tostring(craftingType) .. ") is not known in \'AF.researchLineListIndicesOfWeaponOrArmorOrJewelryTypes\'")
+            return
+        end
+        local researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = researchLineListIndicesOfWeaponOrArmorOrJewelryTypesBase[craftingStationFilter]
+        if not researchLineListIndicesOfWeaponOrArmorOrJewelryTypes then
+            d("[AF]Abort->Crafting table filter type (".. tostring(craftingStationFilter) .. ") is not known in \'AF.researchLineListIndicesOfWeaponOrArmorOrJewelryTypes\'")
+            return
+        end
+        local researchLineListIndexOfWeaponOrArmorOrJewelryType = 0
+        --Rebuild the list but filter the items by applying new filter to the current libFilter filterPanelId
+        --which then will be used inside the :Refresh() function of the panel
+
+        --Prefilter some entries if the ALL button was chosen?
+        local filterOrEquipTypesPreFiltered, armorTypesPreFiltered
+        if runPrefilterForAllSelection then
+            --Check which button is currently active. If it's not ALL then the ALL dropdown entry was selected.
+            --Check which button is active and prefilter the list with the determined filterTypes, equipTypes and/or armorTypes
+            filterOrEquipTypesPreFiltered, armorTypesPreFiltered = util.PreFilterWithSubfilterBarButtonFilterForAll()
+        end
+        --Add the prefilters to the current filters
+        if filterOrEquipTypesPreFiltered then
+            if not filterOrEquipTypes then
+                filterOrEquipTypes = filterOrEquipTypesPreFiltered
+            else
+                if type(filterOrEquipTypes) == "table" then
+                    for _, filterOrEquipType in ipairs(filterOrEquipTypesPreFiltered) do
+                        table.insert(filterOrEquipTypes, filterOrEquipType)
+                    end
+                else
+                    local filterOrEquipType = filterOrEquipTypes
+                    filterOrEquipTypes = {}
+                    filterOrEquipTypes = filterOrEquipTypesPreFiltered
                     table.insert(filterOrEquipTypes, filterOrEquipType)
                 end
-            else
-                local filterOrEquipType = filterOrEquipTypes
-                filterOrEquipTypes = {}
-                filterOrEquipTypes = filterOrEquipTypesPreFiltered
-                table.insert(filterOrEquipTypes, filterOrEquipType)
             end
         end
-    end
-    if armorTypesPreFiltered then
-        if not armorTypes then
-            armorTypes = armorTypesPreFiltered
-        else
-            if type(armorTypes) == "table" then
-                for _, armorType in ipairs(armorTypesPreFiltered) do
+        if armorTypesPreFiltered then
+            if not armorTypes then
+                armorTypes = armorTypesPreFiltered
+            else
+                if type(armorTypes) == "table" then
+                    for _, armorType in ipairs(armorTypesPreFiltered) do
+                        table.insert(armorTypes, armorType)
+                    end
+                else
+                    local armorType = armorTypes
+                    armorTypes = {}
+                    armorTypes = armorTypesPreFiltered
                     table.insert(armorTypes, armorType)
                 end
+            end
+        end
+
+        --Count the filterTypes
+        local filterTypeCount = 0
+        if filterOrEquipTypes ~= nil then
+            if type(filterOrEquipTypes) == "table" then
+                filterTypeCount = #filterOrEquipTypes
+                if filterTypeCount == 1 then
+                    researchLineListIndexOfWeaponOrArmorOrJewelryType = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[filterOrEquipTypes[1]]
+                end
             else
-                local armorType = armorTypes
-                armorTypes = {}
-                armorTypes = armorTypesPreFiltered
-                table.insert(armorTypes, armorType)
+                filterTypeCount = 1
+                researchLineListIndexOfWeaponOrArmorOrJewelryType = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[filterOrEquipTypes]
             end
         end
-    end
-
-    --Count the filterTypes
-    local filterTypeCount = 0
-    if filterOrEquipTypes ~= nil then
-        if type(filterOrEquipTypes) == "table" then
-            filterTypeCount = #filterOrEquipTypes
-            if filterTypeCount == 1 then
-                researchLineListIndexOfWeaponOrArmorOrJewelryType = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[filterOrEquipTypes[1]]
+        --Count the armorTypes
+        local armorTypeCount = 0
+        if armorTypes ~= nil then
+            if type(armorTypes) == "table" then
+                armorTypeCount = #armorTypes
+            else
+                armorTypeCount = 1
             end
-        else
-            filterTypeCount = 1
-            researchLineListIndexOfWeaponOrArmorOrJewelryType = researchLineListIndicesOfWeaponOrArmorOrJewelryTypes[filterOrEquipTypes]
         end
-
-        --Add the filterFunc to the current filterPanelId's filters
-        local filterPanelId = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+        --Count the traitTypes
+        local traitTypeCount = 0
+        if traitTypes ~= nil then
+            if type(traitTypes) == "table" then
+                traitTypeCount = #traitTypes
+            else
+                traitTypeCount = 1
+            end
+        end
+--d("[AF]filterTypeCount: " ..tostring(filterTypeCount) .. ", armorTypeCount: " ..tostring(armorTypeCount) .. ", traitTypeCount: " ..tostring(traitTypeCount))
+        --Nothing should be filtered? Abort here and allow all entries
+        if filterTypeCount == 0 and armorTypeCount == 0 and traitTypeCount == 0 then
+            return
+        end
+        --Check the researchLinIndices for their filterOrEquiupType, armorType and traitType at the current filterPanelId
         if filterPanelId then
             --Check the current crafting table's research line for the indices and build a "skip table" for LibFilters-3.0
             local fromResearchLineIndex = 1
@@ -1559,66 +1293,61 @@ function util.FilterHorizontalScrollList(runPrefilterForAllSelection, horizontal
                 for researchLineIndex = 1, toResearchLineIndex do
                     --d(">researchLineIndex: " ..tostring(researchLineIndex) .. ", name: " .. tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                     --Get the current filterType at the researchLineIndex
-                    local filterTypeOfResearchLineIndex = researchLineAtCraftingStationToFilterType[researchLineIndex]
                     local researchLineIndexIsAllowed = false
-                    if filterTypeOfResearchLineIndex then
-                        --Check each filterType
-                        if type(filterOrEquipTypes) == "table" then
-                            for _, filterType in ipairs(filterOrEquipTypes) do
-                                if filterType == filterTypeOfResearchLineIndex then
-                                    if armorTypes and researchLineListArmorTypes then
-                                        local researchLineListArmorType = researchLineListArmorTypes[researchLineIndex]
-                                        if researchLineListArmorType then
-                                            if type(armorTypes) == "table" then
-                                                for _, armorType in ipairs(armorTypes) do
-                                                    if armorType == researchLineListArmorType then
-                                                        researchLineIndexIsAllowed = true
-                                                        break --exit the inner inner armorTypes for .. loop of filterTypes
-                                                    end
-                                                end
-                                            else
-                                                if armorTypes == researchLineListArmorType then
-                                                    researchLineIndexIsAllowed = true
-                                                end
-                                            end
-                                        end
-                                    else
+                    --Check filterOrEquippmentTypes + armor types
+                    if filterTypeCount > 0 then
+--d(">check filterOrEquipType")
+                        local filterTypeOfResearchLineIndex = researchLineAtCraftingStationToFilterType[researchLineIndex]
+                        if filterTypeOfResearchLineIndex then
+--d(">filterTypeOfResearchLineIndex: " ..tostring(filterTypeOfResearchLineIndex))
+                            --Check each filterType
+                            if type(filterOrEquipTypes) == "table" then
+                                for _, filterType in ipairs(filterOrEquipTypes) do
+                                    if filterType == filterTypeOfResearchLineIndex then
                                         researchLineIndexIsAllowed = true
+                                        break --exit the inner filterOrEquipTyps for .. loop of filterTypes
                                     end
                                 end
-                                if researchLineIndexIsAllowed then
-                                    break --exit the inner filterOrEquipTyps for .. loop of filterTypes
-                                end
-                            end
-                        else
-                            if filterOrEquipTypes == filterTypeOfResearchLineIndex then
-                                if armorTypes and researchLineListArmorTypes then
-                                    local researchLineListArmorType = researchLineListArmorTypes[researchLineIndex]
-                                    if researchLineListArmorType then
-                                        if type(armorTypes) == "table" then
-                                            for _, armorType in ipairs(armorTypes) do
-                                                if armorType == researchLineListArmorType then
-                                                    researchLineIndexIsAllowed = true
-                                                    break --exit the inner inner armorTypes for .. loop of filterTypes
-                                                end
-                                            end
-                                        else
-                                            if armorTypes == researchLineListArmorType then
-                                                researchLineIndexIsAllowed = true
-                                            end
-                                        end
-                                    end
-                                else
+                            else
+                                if filterOrEquipTypes == filterTypeOfResearchLineIndex then
                                     researchLineIndexIsAllowed = true
                                 end
                             end
                         end
                     end
+                    --Check armor types (if not checked within filterOrEquipType before)
+                    if armorTypeCount > 0 and ((researchLineIndexIsAllowed and filterTypeCount > 0) or (not researchLineIndexIsAllowed and filterTypeCount == 0)) then
+                        researchLineIndexIsAllowed = false
+--d(">researchLineIndexIsAllowed: " .. tostring(researchLineIndexIsAllowed) .." -> check armorType")
+                        if armorTypes and researchLineListArmorTypes then
+                            local researchLineListArmorType = researchLineListArmorTypes[researchLineIndex]
+                            if researchLineListArmorType then
+--d(">researchLineListArmorType: " ..tostring(researchLineListArmorType))
+                                if type(armorTypes) == "table" then
+                                    for _, armorType in ipairs(armorTypes) do
+                                        if armorType == researchLineListArmorType then
+                                            researchLineIndexIsAllowed = true
+                                            break --exit the inner inner armorTypes for .. loop
+                                        end
+                                    end
+                                else
+                                    if armorTypes == researchLineListArmorType then
+                                        researchLineIndexIsAllowed = true
+                                    end
+                                end
+                            end
+                        else
+                            researchLineIndexIsAllowed = true
+                        end
+                    end
+                    --Check traits
                     --Is the researchLineIndex allowed so far because of the matching filterOrEquipType and/or armor type?
-                    if researchLineIndexIsAllowed and traitTypes ~= nil then
+                    --Or not allowed as filterOrEquipType and armorType were not checked
+                    if traitTypeCount > 0 and ((researchLineIndexIsAllowed and (filterTypeCount > 0 or armorTypeCount > 0)) or (not researchLineIndexIsAllowed and (filterTypeCount == 0 and armorTypeCount == 0)) )then
+                        researchLineIndexIsAllowed = false
+--d(">researchLineIndexIsAllowed: " .. tostring(researchLineIndexIsAllowed) .." -> check traitType")
                         local researchLineListTraitType = GetSmithingResearchLineTraitInfo(craftingType, researchLineIndex, 1)
                         --d(">researchLine trait: " ..tostring(researchLineListTraitType))
-                        researchLineIndexIsAllowed = false
                         --Check if the traitTypes are given and mathcing as well
                         if type(traitTypes) == "table" then
                             for _, traitType in ipairs(traitTypes) do
@@ -1637,10 +1366,10 @@ function util.FilterHorizontalScrollList(runPrefilterForAllSelection, horizontal
                     end
                     --FilterType is not allowed? Add it to the skip table
                     if not researchLineIndexIsAllowed then
-                        --d("<<<<skipping researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+--d("<<<<skipping researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                         skipTable[researchLineIndex] = true
                     else
-                        --d(">>>>>adding researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+--d(">>>>>adding researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                     end
                 end
                 --local expectedTypeFilter = ZO_CraftingUtils_GetSmithingFilterFromTrait(GetSmithingResearchLineTraitInfo(craftingType, researchLineIndex, 1)) --returns 2 for weapons and 4 for armor, ? for jewelry
@@ -1657,29 +1386,18 @@ function util.FilterHorizontalScrollList(runPrefilterForAllSelection, horizontal
                 --      all entries in the horizontal list again then :-(
                 util.ThrottledUpdate("AF_ClearResearchPanelCustomFilters", 50, util.ClearResearchPanelCustomFilters)
             end
+
+            --Scroll the list to the selected weapon or armorType
+            if not researchLineListIndexOfWeaponOrArmorOrJewelryType then researchLineListIndexOfWeaponOrArmorOrJewelryType = 0 end
+            zo_callLater(function()
+                --d(">researchLineListIndexOfWeaponOrArmorType: " ..tostring(researchLineListIndexOfWeaponOrArmorType))
+                horizontalScrollList:SetSelectedIndex(researchLineListIndexOfWeaponOrArmorOrJewelryType)
+            end, 25)
         end
     end
-
-    --Scroll the list to the selected weapon or armorType
-    if not researchLineListIndexOfWeaponOrArmorOrJewelryType then researchLineListIndexOfWeaponOrArmorOrJewelryType = 0 end
-    zo_callLater(function()
-        --d(">researchLineListIndexOfWeaponOrArmorType: " ..tostring(researchLineListIndexOfWeaponOrArmorType))
-        horizontalScrollList:SetSelectedIndex(researchLineListIndexOfWeaponOrArmorOrJewelryType)
-    end, 25)
-end
-
---Check if the research panel is shown and do some special stuff with the horizontal scroll list then.
---If not: Run the filter function only
-function util.CheckForResearchPanelAndRunFilterFunction(runPrefilterForAllSelection, filterOrEquipTypes, armorTypes, traitTypes)
-    runPrefilterForAllSelection = runPrefilterForAllSelection or false
---d("[AF]util.CheckForResearchPanelAndRunFilterFunction")
-    --If the research panel is shown:
-    --Clear the horizontal list and only show the entries which apply to the selected item type
-    local researchHorizontalScrollList = AF.controlsForChecks.researchLineList
-    if researchHorizontalScrollList and researchHorizontalScrollList.control and not researchHorizontalScrollList.control:IsHidden() then
-        --Hide entries on the horizontal scroll list of the research panel
-        util.FilterHorizontalScrollList(runPrefilterForAllSelection, researchHorizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
-    end
+    --==================================================================================================================
+    -- -^- SMITHING Research horizontal scrolllist?                                                                 -^-
+    --==================================================================================================================
 end
 
 --Get the current active subfilterBar's button name and then read the filterForAll entry of this button
@@ -1715,9 +1433,9 @@ function util.PreFilterWithSubfilterBarButtonFilterForAll()
     --Combine filterTypes and equipTypes in return table filterAndEquipTypes
     local filterAndEquipTypes
     local armorTypes
-    if filterForAll.filterTypes then
+    if filterForAll.itemTypes then
         filterAndEquipTypes = filterAndEquipTypes or {}
-        for _, filterType in pairs(filterForAll.filterTypes) do
+        for _, filterType in pairs(filterForAll.itemTypes) do
             table.insert(filterAndEquipTypes, filterType)
         end
     end
@@ -1733,3 +1451,201 @@ function util.PreFilterWithSubfilterBarButtonFilterForAll()
     end
     return filterAndEquipTypes, armorTypes
 end
+
+--======================================================================================================================
+-- -^- Filter functions                                                                                             -^-
+--======================================================================================================================
+
+--======================================================================================================================
+-- -v- Crafting functions                                                                                           -v-
+--======================================================================================================================
+--Is the retrait panel shown?
+function util.IsRetraitPanelShown()
+    return ZO_RETRAIT_STATION_MANAGER:IsRetraitSceneShowing() or false
+end
+
+--Is any crafting table shown?
+function util.IsCraftingPanelShown()
+    return (ZO_CraftingUtils_IsCraftingWindowOpen() or util.IsRetraitPanelShown()) or false
+end
+
+--Get the crafting table of the filterType
+function util.GetCraftingTable(filterType)
+    if filterType == nil or not util.IsCraftingPanelShown() then return end
+    local craftingTables = AF.craftingTables
+    local craftingTable = craftingTables[filterType]
+    return craftingTable
+end
+
+--Get the crafting panel of the filterType
+function util.GetCraftingTablePanel(filterType)
+    if filterType == nil or not util.IsCraftingPanelShown() then return end
+    local craftingTablePanels = AF.craftingTablePanels
+    local craftingPanel = craftingTablePanels[filterType]
+    return craftingPanel
+end
+
+--Get the crafting panel of the filterType and it's inventory
+function util.GetCraftingTablePanelInventory(filterType)
+    if filterType == nil or not util.IsCraftingPanelShown() then return end
+    local craftingPanel = util.GetCraftingTablePanel(filterType)
+    if not craftingPanel then return end
+    local craftingInv
+    if craftingPanel.inventory then
+        craftingInv = craftingPanel.inventory
+        --For research panels
+    else
+        craftingInv = craftingPanel
+    end
+    return craftingInv
+end
+
+--Get the crafting panel of the filterType and it's currently selected filterType (e.g. weapons, or armor, or light armor or medium armor, or neck or ring, ...)
+function util.GetCraftingTablePanelFilter(filterType)
+    if filterType == nil or not util.IsCraftingPanelShown() then return end
+    local craftingPanelInv = util.GetCraftingTablePanelInventory(filterType)
+    if not craftingPanelInv then return end
+    local filterTypeOfCraftingTable
+    if craftingPanelInv.filterType then
+        filterTypeOfCraftingTable = craftingPanelInv.filterType
+        --For research panels
+    elseif craftingPanelInv.typeFilter then
+        filterTypeOfCraftingTable = craftingPanelInv.typeFilter
+    end
+    return filterTypeOfCraftingTable
+end
+
+--Get the crafting interaction type
+function util.GetCraftingType()
+    --[[
+        TradeskillType
+        CRAFTING_TYPE_ALCHEMY
+        CRAFTING_TYPE_BLACKSMITHING
+        CRAFTING_TYPE_CLOTHIER
+        CRAFTING_TYPE_ENCHANTING
+        CRAFTING_TYPE_INVALID
+        CRAFTING_TYPE_PROVISIONING
+        CRAFTING_TYPE_WOODWORKING
+        CRAFTING_TYPE_JEWELRYCRAFTING
+    ]]
+    return GetCraftingInteractionType() or CRAFTING_TYPE_INVALID
+end
+
+--Get the inventory of the craftingPanel in "libFiltersFilterPanelId"
+function util.GetInventoryFromCraftingPanel(libFiltersFilterPanelId)
+    if libFiltersFilterPanelId == nil then return end
+    local craftingPanelInv = util.GetCraftingTablePanelInventory(libFiltersFilterPanelId)
+    return craftingPanelInv
+end
+
+--Get the crafting tables mode
+function util.GetCraftingMode(inventoryType)
+    inventoryType = inventoryType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    local craftingMode
+    local craftingTable = util.GetCraftingTable(inventoryType)
+    if not craftingTable then return end
+    craftingMode = craftingTable.mode or craftingTable.enchantingMode
+    return craftingMode
+end
+
+--Check if the inventorytype is a crafting station
+function util.IsCraftingStationInventoryType(inventoryType)
+    local craftingTables = AF.craftingTables
+    local retVar = (craftingTables[inventoryType] ~= nil) or false
+    return retVar
+end
+
+--Function to return a boolean value if the craftingPanel is using the worn bag ID as well.
+--Use the LibFilters filterPanelid as parameter
+function util.GetCraftingPanelUsesBagWorn(libFiltersFilterPanelId)
+    local craftingFilterPanelId2UsesBagWorn = AF.craftingFilterPanelId2UsesBagWorn
+    local usesBagWorn = craftingFilterPanelId2UsesBagWorn[libFiltersFilterPanelId] or false
+    return usesBagWorn
+end
+
+--Function to return the "predicate" and "filter" functions used at the different crafting types, as new inventory lists are build.
+-->They will pre-filter and filter the inventory items.
+--Use the LibFilters filterPanelId as parameter
+function util.GetPredicateAndFilterFunctionFromCraftingPanel(libFiltersFilterPanelId)
+    local craftingFilterPanelId2PredicateFunc = AF.craftingFilterPanelId2PredicateFunc
+    local predicateFunc, filterFunc
+    local funcs = craftingFilterPanelId2PredicateFunc[libFiltersFilterPanelId] or nil
+    if funcs and funcs[1] and funcs[2] then
+        predicateFunc, filterFunc = funcs[1], funcs[2]
+    end
+    return predicateFunc, filterFunc
+end
+
+function util.MapItemFilterType2CraftingStationFilterType(itemFilterType, filterPanelId, craftingType)
+    if filterPanelId == nil then return end
+    local mapIFT2CSFT = AF.mapIFT2CSFT
+    if craftingType == nil then craftingType = util.GetCraftingType() end
+    if itemFilterType == nil or craftingType == nil or mapIFT2CSFT[filterPanelId] == nil or mapIFT2CSFT[filterPanelId][craftingType] == nil or mapIFT2CSFT[filterPanelId][craftingType][itemFilterType] == nil then return end
+    return mapIFT2CSFT[filterPanelId][craftingType][itemFilterType]
+end
+
+function util.MapCraftingStationFilterType2ItemFilterType(craftingStationFilterType, filterPanelId, craftingType)
+    if filterPanelId == nil then return end
+    local mapCSFT2IFT = AF.mapCSFT2IFT
+    if craftingType == nil then craftingType = util.GetCraftingType() end
+    if craftingStationFilterType == nil or craftingType == nil or mapCSFT2IFT[filterPanelId] == nil or mapCSFT2IFT[filterPanelId][craftingType] == nil or mapCSFT2IFT[filterPanelId][craftingType][craftingStationFilterType] == nil then return end
+    local retVar = mapCSFT2IFT[filterPanelId][craftingType][craftingStationFilterType]
+    return retVar
+end
+
+--Clear the custom variables used to filter the horizontal scrolling list entries
+function util.ClearResearchPanelCustomFilters()
+    --Reset the custom data for the loop now
+    if controlsForChecks.researchPanel and controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues then
+        controlsForChecks.researchPanel.LibFilters_3ResearchLineLoopValues = nil
+    end
+end
+
+--Check if the research panel is shown and do some special stuff with the horizontal scroll list then.
+--If not: Run the filter function only
+function util.CheckForResearchPanelAndRunFilterFunction(runPrefilterForAllSelection, filterOrEquipTypes, armorTypes, traitTypes)
+    runPrefilterForAllSelection = runPrefilterForAllSelection or false
+--d("[AF]util.CheckForResearchPanelAndRunFilterFunction")
+    --If the research panel is shown:
+    --Clear the horizontal list and only show the entries which apply to the selected item type
+    local researchHorizontalScrollList = AF.controlsForChecks.researchLineList
+    if researchHorizontalScrollList and researchHorizontalScrollList.control and not researchHorizontalScrollList.control:IsHidden() then
+        --Hide entries on the horizontal scroll list of the research panel
+        util.FilterHorizontalScrollList(runPrefilterForAllSelection, researchHorizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
+    end
+end
+--======================================================================================================================
+-- -^- Crafting functions                                                                                           -^-
+--======================================================================================================================
+
+
+--======================================================================================================================
+-- -v- API functions                                                                                               -v-
+--======================================================================================================================
+--Checks if other addons have registered filter functions which should be run on util.RefreshSubfilterBar as well
+--to check if the subfilter bar button should be greyed out.
+-->Will return true if no other addons have registered any filters for the inventoryType, craftingType and filterType
+function util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(slotData, inventoryType, craftingType, libFiltersPanelId)
+    if slotData == nil or slotData.bagId == nil or slotData.slotIndex == nil
+            or inventoryType == nil or craftingType == nil or libFiltersPanelId == nil then return true end
+    --d("[AF]util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters, inventoryType: " ..tostring(inventoryType) .. ", craftingType: " .. tostring(craftingType) .. ", libFiltersPanelId: " .. tostring(libFiltersPanelId))
+    --AF.SubfilterRefreshCallbacks contain the externally registered filters, from other addons, for the refresh of subfilterBars
+    local subfilterRefreshCallbacks
+    if AF.SubfilterRefreshCallbacks == nil or AF.SubfilterRefreshCallbacks[inventoryType] == nil
+            or AF.SubfilterRefreshCallbacks[inventoryType][craftingType] == nil or AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId] == nil then return true end
+    subfilterRefreshCallbacks = AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId]
+    if subfilterRefreshCallbacks == nil then return true end
+    local retVar = true
+    for externalAddonName, callbackFunc in pairs(subfilterRefreshCallbacks) do
+        if callbackFunc ~= nil and type(callbackFunc) == "function" then
+            local callbackFuncResult = callbackFunc(slotData)
+            --d(">[AF]RefreshSubFilterbar, externalAddonName: " .. tostring(externalAddonName) .. ", result: " ..tostring(callbackFuncResult))
+            retVar = callbackFuncResult
+            if retVar == false then return false end
+        end
+    end
+    return retVar
+end
+--======================================================================================================================
+-- -^- API functions                                                                                               -^-
+--======================================================================================================================

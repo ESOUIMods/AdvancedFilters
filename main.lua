@@ -314,7 +314,7 @@ local function InitializeHooks()
             end
             --Show a debug message now and abort here?
             if showErrorInChat then
-                showChatDebug("ShowSubfilterBar - BEGIN", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
+                showChatDebug("ShowSubfilterBar - BEGIN", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. util.GetCraftingType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
             end
             return false
         end
@@ -341,14 +341,14 @@ local function InitializeHooks()
         --Get the new subFilterBar to show
         local subfilterBarBase = subfilterGroup[craftingType]
         if subfilterBarBase == nil then
-            showChatDebug("ShowSubfilterBar - SubFilterBarBase missing", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
+            showChatDebug("ShowSubfilterBar - SubFilterBarBase missing", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. util.GetCraftingType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
             return
         end
         local subfilterBar = subfilterBarBase[currentFilter]
         if subfilterBar == nil then
             --SubfilterBar is nil but maybe we do not need any like at the inventory quest items?
             if currentFilter ~= nil and AF.subFiltersBarInactive[currentFilter] == nil then
-                showChatDebug("ShowSubfilterBar - SubFilterBar missing", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
+                showChatDebug("ShowSubfilterBar - SubFilterBar missing", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. util.GetCraftingType() .. ", currentFilter: " .. tostring(currentFilter) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
                 return
             end
         end
@@ -408,7 +408,7 @@ local function InitializeHooks()
             --Error handling: Showing new subfilter bar
             if doDebugOutput then
                 if currentFilter == nil or (currentFilter ~= nil and AF.subFiltersBarInactive[currentFilter] == nil) then
-                    showChatDebug("ShowSubfilterBar - END", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. GetCraftingInteractionType() .. ", currentFilter: " .. tostring(currentFilter))
+                    showChatDebug("ShowSubfilterBar - END", "InventoryType: " ..tostring(AF.currentInventoryType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. util.GetCraftingType() .. ", currentFilter: " .. tostring(currentFilter))
                 end
             end
         end
@@ -647,7 +647,7 @@ local function InitializeHooks()
             SMITHING_MODE_RESEARCH = 5
             SMITHING_MODE_RECIPES = 6
         ]]
-        local craftType = GetCraftingInteractionType()
+        local craftType = util.GetCraftingType()
         local isJewelryCrafting = (craftType == CRAFTING_TYPE_JEWELRYCRAFTING) or false
         if     mode == SMITHING_MODE_REFINEMENT then
             if isJewelryCrafting then
