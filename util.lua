@@ -1480,9 +1480,10 @@ end
 
 --Filter a horizontal scroll list and run a filterFunction given to determine the entries to show in the
 --horizontal list afterwards
-function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
+function util.FilterHorizontalScrollList(runPrefilterForAllSelection, horizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
     if not horizontalScrollList then return false end
---d("[AF]util.FilterHorizontalScrollList")
+    runPrefilterForAllSelection = runPrefilterForAllSelection or false
+    --d("[AF]util.FilterHorizontalScrollList")
     local craftingType = GetCraftingInteractionType()
     if craftingType == CRAFTING_TYPE_INVALID then return false end
     local researchLineListArmorTypes = AF.researchLinesToArmorType[craftingType]
@@ -1490,6 +1491,52 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
     local researchLineListIndexOfWeaponOrArmorOrJewelryType = 0
     --Rebuild the list but filter the items by applying new filter to the current libFilter filterPanelId
     --which then will be used inside the :Refresh() function of the panel
+
+    --Prefilter some entries if the ALL button was chosen?
+    local filterOrEquipTypesPreFiltered, armorTypesPreFiltered
+    if runPrefilterForAllSelection then
+        --Check which button is currently active. If it's not ALL then the ALL dropdown entry was selected.
+        --Check which button is active and prefilter the list with the determined filterTypes, equipTypes and/or armorTypes
+        filterOrEquipTypesPreFiltered, armorTypesPreFiltered = util.PreFilterWithSubfilterBarButtonFilterForAll()
+AF._filterOrEquipTypesPreFiltered = filterOrEquipTypesPreFiltered
+AF._armorTypesPreFiltered = armorTypesPreFiltered
+    end
+    --Add the prefilters to the current filters
+    if filterOrEquipTypesPreFiltered then
+        if not filterOrEquipTypes then
+            filterOrEquipTypes = filterOrEquipTypesPreFiltered
+        else
+            if type(filterOrEquipTypes) == "table" then
+                for _, filterOrEquipType in ipairs(filterOrEquipTypesPreFiltered) do
+                    table.insert(filterOrEquipTypes, filterOrEquipType)
+                end
+            else
+                local filterOrEquipType = filterOrEquipTypes
+                filterOrEquipTypes = {}
+                filterOrEquipTypes = filterOrEquipTypesPreFiltered
+                table.insert(filterOrEquipTypes, filterOrEquipType)
+            end
+        end
+    end
+    if armorTypesPreFiltered then
+        if not armorTypes then
+            armorTypes = armorTypesPreFiltered
+        else
+            if type(armorTypes) == "table" then
+                for _, armorType in ipairs(armorTypesPreFiltered) do
+                    table.insert(armorTypes, armorType)
+                end
+            else
+                local armorType = armorTypes
+                armorTypes = {}
+                armorTypes = armorTypesPreFiltered
+                table.insert(armorTypes, armorType)
+            end
+        end
+    end
+AF._filterOrEquipTypes = filterOrEquipTypes
+AF._armorTypes = armorTypes
+
     --Count the filterTypes
     local filterTypeCount = 0
     if filterOrEquipTypes ~= nil then
@@ -1514,7 +1561,7 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
             local researchLineAtCraftingStationToFilterType = AF.researchLinesToFilterTypes[craftingType]
             if researchLineAtCraftingStationToFilterType then
                 for researchLineIndex = 1, toResearchLineIndex do
---d(">researchLineIndex: " ..tostring(researchLineIndex) .. ", name: " .. tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+                    --d(">researchLineIndex: " ..tostring(researchLineIndex) .. ", name: " .. tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                     --Get the current filterType at the researchLineIndex
                     local filterTypeOfResearchLineIndex = researchLineAtCraftingStationToFilterType[researchLineIndex]
                     local researchLineIndexIsAllowed = false
@@ -1574,30 +1621,30 @@ function util.FilterHorizontalScrollList(horizontalScrollList, filterOrEquipType
                     --Is the researchLineIndex allowed so far because of the matching filterOrEquipType and/or armor type?
                     if researchLineIndexIsAllowed and traitTypes ~= nil then
                         local researchLineListTraitType = GetSmithingResearchLineTraitInfo(craftingType, researchLineIndex, 1)
---d(">researchLine trait: " ..tostring(researchLineListTraitType))
+                        --d(">researchLine trait: " ..tostring(researchLineListTraitType))
                         researchLineIndexIsAllowed = false
                         --Check if the traitTypes are given and mathcing as well
                         if type(traitTypes) == "table" then
                             for _, traitType in ipairs(traitTypes) do
                                 if traitType == researchLineListTraitType then
---d(">found matching trait: " ..tostring(traitType))
+                                    --d(">found matching trait: " ..tostring(traitType))
                                     researchLineIndexIsAllowed = true
                                     break --exit the inner inner traitTypes for .. loop
                                 end
                             end
                         else
                             if traitTypes == researchLineListTraitType then
---d(">!!!found matching trait: " ..tostring(traitTypes))
+                                --d(">!!!found matching trait: " ..tostring(traitTypes))
                                 researchLineIndexIsAllowed = true
                             end
                         end
                     end
                     --FilterType is not allowed? Add it to the skip table
                     if not researchLineIndexIsAllowed then
---d("<<<<skipping researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+                        --d("<<<<skipping researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                         skipTable[researchLineIndex] = true
                     else
---d(">>>>>adding researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
+                        --d(">>>>>adding researchLineIndex: " .. tostring(researchLineIndex) .. ", name: " ..tostring(GetSmithingResearchLineInfo(craftingType, researchLineIndex)))
                     end
                 end
                 --local expectedTypeFilter = ZO_CraftingUtils_GetSmithingFilterFromTrait(GetSmithingResearchLineTraitInfo(craftingType, researchLineIndex, 1)) --returns 2 for weapons and 4 for armor, ? for jewelry
@@ -1627,12 +1674,76 @@ end
 
 --Check if the research panel is shown and do some special stuff with the horizontal scroll list then.
 --If not: Run the filter function only
-function util.CheckForResearchPanelAndRunFilterFunction(filterFunc, filterOrEquipTypes, armorTypes, traitTypes)
+function util.CheckForResearchPanelAndRunFilterFunction(runPrefilterForAllSelection, filterOrEquipTypes, armorTypes, traitTypes)
+    runPrefilterForAllSelection = runPrefilterForAllSelection or false
 --d("[AF]util.CheckForResearchPanelAndRunFilterFunction")
     --If the research panel is shown:
     --Clear the horizontal list and only show the entries which apply to the selected item type
     local researchHorizontalScrollList = AF.controlsForChecks.researchLineList
     if researchHorizontalScrollList and researchHorizontalScrollList.control and not researchHorizontalScrollList.control:IsHidden() then
-        util.FilterHorizontalScrollList(researchHorizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
+        --Hide entries on the horizontal scroll list of the research panel
+        util.FilterHorizontalScrollList(runPrefilterForAllSelection, researchHorizontalScrollList, filterOrEquipTypes, armorTypes, traitTypes)
     end
+end
+
+--Get the current active subfilterBar's button name and then read the filterForAll entry of this button
+--from the subfilterGroups to prefilter the list with some data (e.g. the horizontal research scroll list with EQUIPTYPE_NECK)
+function util.PreFilterWithSubfilterBarButtonFilterForAll()
+d("[AF]util.PreFilterWithSubfilterBarButtonFilterForAll")
+    local subfilterGroups = AF.subfilterGroups[AF.currentInventoryType]
+    if not subfilterGroups then return nil, nil end
+d(">1")
+    local currentActiveSubFilterBar = subfilterGroups.currentSubfilterBar
+    if not currentActiveSubFilterBar then return nil, nil end
+d(">2")
+    local currentActiveButtonAtSubFilterBar = currentActiveSubFilterBar.activeButton
+    if not currentActiveButtonAtSubFilterBar then return nil, nil end
+d(">3")
+    local activeButtonName = currentActiveButtonAtSubFilterBar.name
+    --Stop if name of button is missing or if it's the ALL button
+    if not activeButtonName or activeButtonName == AF_CONST_ALL then return nil, nil end
+d(">4")
+    --Get the subfilterCallbacks
+    local subfilterCallbacks = AF.subfilterCallbacks
+    if not subfilterCallbacks then return nil, nil end
+    local activeButtonGroupName = currentActiveButtonAtSubFilterBar.groupName
+d(">activeButtonName: " ..tostring(activeButtonName) .. ", activeButtonGroupName: " ..tostring(activeButtonGroupName))
+    local subfilterCallbackForButtonGroup = subfilterCallbacks[activeButtonGroupName]
+    if not subfilterCallbackForButtonGroup then return nil, nil end
+d(">6")
+    local subfilterCallbackForButton = subfilterCallbackForButtonGroup[activeButtonName]
+    if not subfilterCallbackForButton then return nil, nil end
+    local filterForAll = subfilterCallbackForButton.filterForAll
+    if not filterForAll then return nil, nil end
+d(">found filter for ALL")
+    --[[
+            filterForAll = {
+                filterTypes = {}
+                equipTypes  = {EQUIPTYPE_RING},
+                armorTypes  = {},
+            },
+    ]]
+    --Combine filterTypes and equipTypes in return table filterAndEquipTypes
+    local filterAndEquipTypes
+    local armorTypes
+    if filterForAll.filterTypes then
+        filterAndEquipTypes = filterAndEquipTypes or {}
+        for _, filterType in pairs(filterForAll.filterTypes) do
+            table.insert(filterAndEquipTypes, filterType)
+        end
+    end
+    if filterForAll.equipTypes then
+d(">FilterForAll got equipTypes")
+        filterAndEquipTypes = filterAndEquipTypes or {}
+        for a, equipType in pairs(filterForAll.equipTypes) do
+d(">a: " ..tostring(a) ..", equipType: " ..tostring(equipType))
+            table.insert(filterAndEquipTypes, equipType)
+d(">added equiptype: " ..tostring(equipType))
+        end
+    end
+    if filterForAll.armorTypes then
+        armorTypes = {}
+        armorTypes = filterForAll.armorTypes
+    end
+    return filterAndEquipTypes, armorTypes
 end
