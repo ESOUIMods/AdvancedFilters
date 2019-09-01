@@ -628,7 +628,7 @@ AF.subfilterCallbacks = {
         },
         Neck = {
             filterForAll = {
-                equipTypes = {EQUIPTYPE_NECK},
+                equipTypes = {EQUIP_TYPE_NECK},
             },
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(false, EQUIP_TYPE_NECK, nil)end,
             filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_NECK}),
@@ -648,7 +648,7 @@ AF.subfilterCallbacks = {
         },
         Ring = {
             filterForAll = {
-                equipTypes = {EQUIPTYPE_RING},
+                equipTypes = {EQUIP_TYPE_RING},
             },
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(false, EQUIP_TYPE_RING, nil)end,
             filterCallback = GetFilterCallbackForGear({EQUIP_TYPE_RING}),

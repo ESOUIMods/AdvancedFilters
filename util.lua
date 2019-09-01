@@ -1498,8 +1498,6 @@ function util.FilterHorizontalScrollList(runPrefilterForAllSelection, horizontal
         --Check which button is currently active. If it's not ALL then the ALL dropdown entry was selected.
         --Check which button is active and prefilter the list with the determined filterTypes, equipTypes and/or armorTypes
         filterOrEquipTypesPreFiltered, armorTypesPreFiltered = util.PreFilterWithSubfilterBarButtonFilterForAll()
-AF._filterOrEquipTypesPreFiltered = filterOrEquipTypesPreFiltered
-AF._armorTypesPreFiltered = armorTypesPreFiltered
     end
     --Add the prefilters to the current filters
     if filterOrEquipTypesPreFiltered then
@@ -1534,8 +1532,6 @@ AF._armorTypesPreFiltered = armorTypesPreFiltered
             end
         end
     end
-AF._filterOrEquipTypes = filterOrEquipTypes
-AF._armorTypes = armorTypes
 
     --Count the filterTypes
     local filterTypeCount = 0
@@ -1689,33 +1685,26 @@ end
 --Get the current active subfilterBar's button name and then read the filterForAll entry of this button
 --from the subfilterGroups to prefilter the list with some data (e.g. the horizontal research scroll list with EQUIPTYPE_NECK)
 function util.PreFilterWithSubfilterBarButtonFilterForAll()
-d("[AF]util.PreFilterWithSubfilterBarButtonFilterForAll")
+--d("[AF]util.PreFilterWithSubfilterBarButtonFilterForAll")
     local subfilterGroups = AF.subfilterGroups[AF.currentInventoryType]
     if not subfilterGroups then return nil, nil end
-d(">1")
     local currentActiveSubFilterBar = subfilterGroups.currentSubfilterBar
     if not currentActiveSubFilterBar then return nil, nil end
-d(">2")
     local currentActiveButtonAtSubFilterBar = currentActiveSubFilterBar.activeButton
     if not currentActiveButtonAtSubFilterBar then return nil, nil end
-d(">3")
     local activeButtonName = currentActiveButtonAtSubFilterBar.name
     --Stop if name of button is missing or if it's the ALL button
     if not activeButtonName or activeButtonName == AF_CONST_ALL then return nil, nil end
-d(">4")
     --Get the subfilterCallbacks
     local subfilterCallbacks = AF.subfilterCallbacks
     if not subfilterCallbacks then return nil, nil end
     local activeButtonGroupName = currentActiveButtonAtSubFilterBar.groupName
-d(">activeButtonName: " ..tostring(activeButtonName) .. ", activeButtonGroupName: " ..tostring(activeButtonGroupName))
     local subfilterCallbackForButtonGroup = subfilterCallbacks[activeButtonGroupName]
     if not subfilterCallbackForButtonGroup then return nil, nil end
-d(">6")
     local subfilterCallbackForButton = subfilterCallbackForButtonGroup[activeButtonName]
     if not subfilterCallbackForButton then return nil, nil end
     local filterForAll = subfilterCallbackForButton.filterForAll
     if not filterForAll then return nil, nil end
-d(">found filter for ALL")
     --[[
             filterForAll = {
                 filterTypes = {}
@@ -1733,12 +1722,9 @@ d(">found filter for ALL")
         end
     end
     if filterForAll.equipTypes then
-d(">FilterForAll got equipTypes")
         filterAndEquipTypes = filterAndEquipTypes or {}
-        for a, equipType in pairs(filterForAll.equipTypes) do
-d(">a: " ..tostring(a) ..", equipType: " ..tostring(equipType))
+        for _, equipType in pairs(filterForAll.equipTypes) do
             table.insert(filterAndEquipTypes, equipType)
-d(">added equiptype: " ..tostring(equipType))
         end
     end
     if filterForAll.armorTypes then
