@@ -488,9 +488,9 @@ end
 function util.DoNotUpdateInventoryItemCount(filterTypeToUse)
     filterTypeToUse = filterTypeToUse or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
     local doNotUpdateInventoryItemCountFilterPanels = {
-        [LF_SMITHING_CREATE]            = true,
+        [LF_SMITHING_CREATION]          = true,
         [LF_SMITHING_RESEARCH]          = true,
-        [LF_JEWELRY_CREATE]             = true,
+        [LF_JEWELRY_CREATION]           = true,
         [LF_JEWELRY_RESEARCH]           = true,
         [LF_SMITHING_RESEARCH_DIALOG]   = true,
         [LF_JEWELRY_RESEARCH_DIALOG]    = true,
