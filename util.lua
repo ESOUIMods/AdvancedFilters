@@ -488,7 +488,9 @@ end
 function util.DoNotUpdateInventoryItemCount(filterTypeToUse)
     filterTypeToUse = filterTypeToUse or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
     local doNotUpdateInventoryItemCountFilterPanels = {
+        [LF_SMITHING_CREATE]            = true,
         [LF_SMITHING_RESEARCH]          = true,
+        [LF_JEWELRY_CREATE]             = true,
         [LF_JEWELRY_RESEARCH]           = true,
         [LF_SMITHING_RESEARCH_DIALOG]   = true,
         [LF_JEWELRY_RESEARCH_DIALOG]    = true,
@@ -698,6 +700,7 @@ end
 function util.IsCraftBagShown()
     return not ZO_CraftBag:IsHidden()
 end
+
 --======================================================================================================================
 -- -^- IsShown functions                                                                                            -^-
 --======================================================================================================================
@@ -706,10 +709,17 @@ end
 -- -v- Subfilter bar functions                                                                                      -v-
 --======================================================================================================================
 --Should the subfilter bar not be shown?
-function util.CheckIfNoSubfilterBarShouldBeShown(currentFilter)
+--e.g. ALWAYS do not show if special itemfilterType OR if the current inventory was closed again (automatic bank closing)
+function util.CheckIfNoSubfilterBarShouldBeShown(currentFilter, invType)
     local abort = false
     --Is the stable vendor shown? Abort, as there are no subfilter bars
-    if currentFilter == ITEMFILTERTYPE_COLLECTIBLE and SCENE_MANAGER:GetCurrentScene() == STABLES_SCENE then abort = true end
+    if currentFilter and currentFilter == ITEMFILTERTYPE_COLLECTIBLE and SCENE_MANAGER:GetCurrentScene() == STABLES_SCENE then abort = true end
+    if not abort and invType ~= nil then
+        --Check if the subfilterBar is still needed. Maybe the current inventory/panel was closed already again (automatic bank close check)
+        if AF.fragmentStateHiding and AF.fragmentStateHiding[invType] then
+            abort = true
+        end
+    end
     return abort
 end
 
@@ -735,7 +745,8 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
     local inventory, inventorySlots
     local currentFilter
     local bagWornItemCache
-    --d("[AF]SubFilter refresh, calledFromExternalAddon: " .. tostring(calledFromExternalAddon) .. ", invType: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar) .. ", craftingType: " .. tostring(craftingType) .. ", isNoCrafting: " .. tostring(isNoCrafting))
+--d(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+--d("[AF]SubFilter refresh, calledFromExternalAddon: " .. tostring(calledFromExternalAddon) .. ", invType: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar.name) .. ", craftingType: " .. tostring(craftingType) .. ", isNoCrafting: " .. tostring(isNoCrafting))
     --AF._currentSubfilterBarAtRefreshCheck = subfilterBar
 
     --Abort the subfilterBar refresh method? Or check for crafting inventory types and return teh correct inventory types then
@@ -1083,7 +1094,7 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
     local delay             = 0
     local buttonName        = button.name
 
---d("[AF]ApplyFilter " .. tostring(buttonName) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterTypeToUse) .. " and inventoryType " .. tostring(AF.currentInventoryType))
+--d("----->[AF]ApplyFilter " .. tostring(buttonName) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterTypeToUse) .. " and inventoryType " .. tostring(AF.currentInventoryType))
 
     --if something isn't right, abort
     if callback == nil then
@@ -1629,7 +1640,7 @@ function util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(slotData, inve
     if slotData == nil or slotData.bagId == nil or slotData.slotIndex == nil
             or inventoryType == nil or craftingType == nil or libFiltersPanelId == nil then return true end
     --d("[AF]util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters, inventoryType: " ..tostring(inventoryType) .. ", craftingType: " .. tostring(craftingType) .. ", libFiltersPanelId: " .. tostring(libFiltersPanelId))
-    --AF.SubfilterRefreshCallbacks contain the externally registered filters, from other addons, for the refresh of subfilterBars
+    --AF.SubfiltThrottledUpdateerRefreshCallbacks contain the externally registered filters, from other addons, for the refresh of subfilterBars
     local subfilterRefreshCallbacks
     if AF.SubfilterRefreshCallbacks == nil or AF.SubfilterRefreshCallbacks[inventoryType] == nil
             or AF.SubfilterRefreshCallbacks[inventoryType][craftingType] == nil or AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId] == nil then return true end

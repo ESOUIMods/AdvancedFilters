@@ -4,7 +4,7 @@ local AF = AdvancedFilters
 --Addon base variables
 AF.name = "AdvancedFilters"
 AF.author = "ingeniousclown, Randactyl, Baertram"
-AF.version = "1.5.2.4"
+AF.version = "1.5.2.5"
 AF.savedVarsVersion = 1.511
 AF.website = "http://www.esoui.com/downloads/info245-AdvancedFilters.html"
 AF.feedback = "https://www.esoui.com/portal.php?id=136&a=faq"
@@ -79,6 +79,10 @@ AF.scenesForChecks = scenesForChecks
 local sceneNameStoreVendor      = ""
 local sceneNameBankDeposit      = ""
 local sceneNameGuildBankDeposit = ""
+
+--FRAGMENT changes
+--The fragment's state is "hiding"= -> For the subfilter bars
+AF.fragmentStateHiding = {}
 
 --CONTROLS
 --Control names for the "which panel is shown" checks

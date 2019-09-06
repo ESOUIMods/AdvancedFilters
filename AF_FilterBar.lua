@@ -311,6 +311,7 @@ function AF_FilterBar:AddSubfilter(groupName, subfilterName)
 end
 
 function AF_FilterBar:ActivateButton(newButton)
+--d("[AF]ActivateButton: " ..tostring(newButton.name))
     --------------------------------------------------------------------------------------------------------------------
     local function PopulateDropdown(p_newButton)
         local comboBox = self.dropdown.m_comboBox
@@ -388,24 +389,23 @@ function AF_FilterBar:ActivateButton(newButton)
     --clear old dropdown data
     self.dropdown.m_comboBox.m_sortedItems = {}
     --Get the current LibFilters filterPanelId
-if AF.currentInventoryType == nil then
+if self.inventoryType == nil then
 d("===============================================")
 d("[AdvancedFilters]AF_FilterBar:ActivateButton: " .. tostring(newButton.name))
-d(">ERROR - currentInventoryType is NIL!")
+d(">ERROR - inventoryType is NIL!")
 d("===============================================")
 end
-    local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
     --Get the current's inventory filterType
-    local filterType = util.GetCurrentFilterTypeForInventory(self.inventoryType)
+    local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(self.inventoryType)
 if filterPanelIdActive == nil then
 d("===============================================")
 d("[AdvancedFilters]AF_FilterBar:ActivateButton: " .. tostring(newButton.name))
-d(">ERROR - FilterPanelId is NIL!")
+d(">ERROR - filterPanelId is NIL!")
 d("===============================================")
 end
     --add new dropdown data
     PopulateDropdown(newButton)
-    if AF.currentInventoryType and filterPanelIdActive then
+    if self.inventoryType and filterPanelIdActive then
         --select the first item if there is no previous selection or the setting to remember the last selection is disabled
         if not AF.settings.rememberFilterDropdownsLastSelection or not newButton.previousDropdownSelection or not newButton.previousDropdownSelection[filterPanelIdActive] then
             --Select the first entry
@@ -424,12 +424,12 @@ end
                 --local originalCallback = util.LibFilters:GetFilterCallback(AF_CONST_DROPDOWN_FILTER, filterType)
                 local originalCallback = previousDropdownSelection.callback
                 previousDropdownSelection.filterCallback = originalCallback
-                util.ApplyFilter(previousDropdownSelection, AF_CONST_DROPDOWN_FILTER, true, filterType)
+                util.ApplyFilter(previousDropdownSelection, AF_CONST_DROPDOWN_FILTER, true, filterPanelIdActive)
                 --Select the dropdown entry but do not call the callback function as the filter was updated above already
                 self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, true)
             else
                 if previousDropdownSelection.filterCallback ~= nil then
-                    util.ApplyFilter(previousDropdownSelection, AF_CONST_DROPDOWN_FILTER, true, filterType)
+                    util.ApplyFilter(previousDropdownSelection, AF_CONST_DROPDOWN_FILTER, true, filterPanelIdActive)
                 end
                 self.dropdown.m_comboBox:SelectItem(previousDropdownSelection, false)
             end
