@@ -1,10 +1,10 @@
-if AdvancedFilters == nil then AdvancedFilters = {} end
+AdvancedFilters = AdvancedFilters or {}
 local AF = AdvancedFilters
 
 --Addon base variables
 AF.name = "AdvancedFilters"
 AF.author = "ingeniousclown, Randactyl, Baertram"
-AF.version = "1.5.2.6"
+AF.version = "1.5.2.7"
 AF.savedVarsVersion = 1.511
 AF.website = "http://www.esoui.com/downloads/info245-AdvancedFilters.html"
 AF.feedback = "https://www.esoui.com/portal.php?id=136&a=faq"
@@ -15,6 +15,7 @@ AF.clientLang = GetCVar("language.2")
 
 --SavedVariables default settings
 AF.defaultSettings = {
+    debugSpam                               = false, --Only for addon dev!
     doDebugOutput                           = false,
     hideItemCount                           = false,
     itemCountLabelColor = {
@@ -157,7 +158,7 @@ INVENTORY_TYPE_VENDOR_BUY = 900
 
 --ITEMFILTERTYPES
 --Get the current maximum itemFilterType
-AF.maxItemFilterType = ITEMFILTERTYPE_MAX_VALUE -- 26 is the maximum at API 100026 "Wrathstone"
+AF.maxItemFilterType = ITEMFILTERTYPE_MAX_VALUE -- 26 is the maximum at API 100028 "Scalebreaker"
 --Build new "virtual" itemfiltertypes for crafting stations so one can distinguish the different subfilter bars
 local itemFilterTypesDefinedForAdvancedFilters = {
     --Refine
@@ -191,6 +192,15 @@ for itemFilterTypeName, _ in pairs(itemFilterTypesDefinedForAdvancedFilters) do
     counter = counter + 1
     _G[itemFilterTypeName] = counter
 end
+--Update the maximum filterType number
+AF.maxItemFilterType = counter
+
+--Other addons itemFilterTypes
+counter = AF.maxItemFilterType
+counter = counter + 1
+--Harven's Stolen Filter
+ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER = counter
+AF.maxItemFilterType = counter
 
 --NAME STRINGS (for the LibFilters filterTags)
 --The names of the inventories. Needed to build the unique subfilter panel names.
@@ -272,6 +282,10 @@ local filterTypeNames = {
     [ITEMFILTERTYPE_AF_RETRAIT_ARMOR]               = "ArmorRetrait",
     [ITEMFILTERTYPE_AF_RETRAIT_WEAPONS]             = "WeaponsRetrait",
     [ITEMFILTERTYPE_AF_RETRAIT_JEWELRY]             = "JewelryRetrait",
+    --CUSTOM ADDON TABs
+    --[[
+    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER]         = "HarvensStolenFilter",
+    ]]
 }
 AF.filterTypeNames = filterTypeNames
 --Mapping for filter types to crafting AdvancedFilter types
@@ -301,13 +315,6 @@ local normalFilter2CraftingFilter = {
 AF.normalFilter2CraftingFilter = normalFilter2CraftingFilter
 
 --SUBFILTER BARS
---Abort the subfilter bar refresh for the following inventory types
-local abortSubFilterRefreshInventoryTypes = {
-    [INVENTORY_TYPE_VENDOR_BUY] = true, --Vendor buy
-    [INVENTORY_QUEST_ITEM]      = true, --Quest items
-}
-AF.abortSubFilterRefreshInventoryTypes = abortSubFilterRefreshInventoryTypes
-
 --The list controls for the reanchoring of subfilter bars
 local listControlForSubfilterBarReanchor = {
     [LF_SMITHING_RESEARCH]  =
@@ -325,10 +332,21 @@ AF.listControlForSubfilterBarReanchor = listControlForSubfilterBarReanchor
 
 --There are no subfilter bars active at the following inventory panels. Used for debug messages!
 local subFiltersBarInactive = {
-    [ITEMFILTERTYPE_QUEST]          = INVENTORY_QUEST_ITEM,  -- Inventory: Quest items
-    --[ITEMFILTERTYPE_TRADING_HOUSE]  = false,                 -- No inventory! Trading house search
+    [ITEMFILTERTYPE_QUEST]                  = INVENTORY_QUEST_ITEM,  -- Inventory: Quest items
+    --Custom addons
+    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = INVENTORY_BACKPACK,
 }
 AF.subFiltersBarInactive = subFiltersBarInactive
+
+--Abort the subfilter bar refresh for the following inventory types
+local abortSubFilterRefreshInventoryTypes = {
+    [INVENTORY_TYPE_VENDOR_BUY]             = true, --Vendor buy
+    [INVENTORY_QUEST_ITEM]                  = true, --Quest items
+    --Custom addons
+    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = true,
+}
+AF.abortSubFilterRefreshInventoryTypes = abortSubFilterRefreshInventoryTypes
+
 
 --The possible subfilter groups for each inventory type, trade skill type and filtertype.
 local subfilterGroups = {
@@ -345,6 +363,11 @@ local subfilterGroups = {
             [ITEMFILTERTYPE_FURNISHING] = {},
             [ITEMFILTERTYPE_MISCELLANEOUS] = {},
             [ITEMFILTERTYPE_JUNK] = {},
+
+            --CUSTOM ADDON TABs
+            --[[
+            [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = {},
+            ]]
         },
     },
     --Bank
@@ -732,6 +755,13 @@ local subfilterButtonNames = {
     [ITEMFILTERTYPE_AF_RETRAIT_JEWELRY] = {
         "Neck", "Ring", AF_CONST_ALL,
     },
+
+    --CUSTOM ADDON TABs
+    --[[
+    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = {
+        AF_CONST_ALL,
+    }
+    ]]
 }
 --Exclude some of the buttons at an inventory type, craft type, and filter type?
 --If you add entries be sure to add the other ones, sharing the same AF.subfilterCallbacks[groupName][subfilterName]
@@ -800,6 +830,7 @@ local subfilterButtonEntriesNotForDropdownCallback = {
         ["replaceWith"] = "Body",
     },
 }
+AF.subfilterButtonEntriesNotForDropdownCallback = subfilterButtonEntriesNotForDropdownCallback
 
 --Build the keys for the dropdown callback tables used in AF.util.BuildDropdownCallbacks()
 --[[
@@ -915,6 +946,7 @@ local keys = {
 local keys = {
     [AF_CONST_ALL] = {},
 }
+
 --For each entry in subfilterButtonNames:
 --Get the "key name" by mapping the subfilterButton key to it's name using filterTypeNames
 for subfilterButtonKey, subfilterButtonData in pairs(subfilterButtonNames) do
@@ -949,6 +981,23 @@ for subfilterButtonKey, subfilterButtonData in pairs(subfilterButtonNames) do
     end
 end
 AF.dropdownCallbackKeys = keys
+
+--INVENTORY TYPES
+local mapInvTypeToInvTypeBefore = {
+    --Enchanting
+    [LF_ENCHANTING_CREATION]    = LF_ENCHANTING_EXTRACTION,
+    [LF_ENCHANTING_EXTRACTION]  = LF_ENCHANTING_CREATION,
+    --Refinement
+    [LF_SMITHING_REFINE]        = LF_JEWELRY_REFINE,
+    [LF_JEWELRY_REFINE]         = LF_SMITHING_REFINE,
+    --Deconstruction
+    [LF_SMITHING_DECONSTRUCT]   = LF_JEWELRY_DECONSTRUCT,
+    [LF_JEWELRY_DECONSTRUCT]    = LF_SMITHING_DECONSTRUCT,
+    --Improvement
+    [LF_SMITHING_IMPROVEMENT]   = LF_JEWELRY_IMPROVEMENT,
+    [LF_JEWELRY_IMPROVEMENT]    = LF_SMITHING_IMPROVEMENT,
+}
+AF.mapInvTypeToInvTypeBefore = mapInvTypeToInvTypeBefore
 
 --CRAFTBAG
 --The different filter groups for the CraftBag
@@ -1287,6 +1336,20 @@ local craftingTableESOFilterType2AFFilterType = {
 }
 AF.mapCSFT2IFT = craftingTableESOFilterType2AFFilterType
 
+--OTHER ADDONS
+--Mapping for other addons like Harven's Stolen Filters
+local customInventoryFilterButton2ItemType = {
+    ["HarvensStolenFilter"] = ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER,
+}
+AF.customInventoryFilterButton2ItemType = customInventoryFilterButton2ItemType
+
+--Map the custom addon itemFilterTypes to a LibFilters filterPanelId.
+local customAddonItemFilterType2LibFiltersPanelId = {
+    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = LF_INVENTORY,
+}
+AF.customAddonItemFilterType2LibFiltersPanelId = customAddonItemFilterType2LibFiltersPanelId
+
+
 --RESEARCH panel
 --The indices of the research horizontal scrollList for the different weapontypes
 local researchLineListIndicesOfWeaponOrArmorOrJewelryTypes = {
@@ -1468,3 +1531,4 @@ local itemIds = {
     }
 }
 AF.itemIds = itemIds
+

@@ -1,4 +1,6 @@
-if AdvancedFilters == nil then AdvancedFilters = {} end
+AdvancedFilters = AdvancedFilters or {}
+local AF = AdvancedFilters
+
 local textures = {
     All = "esoui/art/inventory/inventory_tabicon_all_%s.dds",
     Trophy = "AdvancedFilters/assets/miscellaneous/trophy/trophy_%s.dds",
@@ -173,5 +175,5 @@ textures.WeaponGlyph = textures.OneHand
 textures.ArmorGlyph = textures.Heavy
 textures.JewelryGlyph = textures.Jewelry
 
-
-AdvancedFilters.textures = textures
+--Add the textures to the addon namespace
+AF.textures = textures

@@ -1,6 +1,9 @@
-if AdvancedFilters == nil then AdvancedFilters = {} end
+AdvancedFilters = AdvancedFilters or {}
 local AF = AdvancedFilters
+
 local util = AF.util
+
+local debugSpam = AF.debugSpam
 
 --Local variables from global addon namespace
 local filterTypeToGroupName = AF.filterTypeNames
@@ -169,6 +172,21 @@ local function GetFilterCallbackForFence(checkOnlyJunk)
           or itemType == ITEMTYPE_GLYPH_WEAPON or itemType == ITEMTYPE_SOUL_GEM
           or itemType == ITEMTYPE_SIEGE or itemType == ITEMTYPE_LURE
           or itemType == ITEMTYPE_TOOL or itemType == ITEMTYPE_TRASH) then
+            return true
+        end
+        return false
+    end
+end
+
+local function GetFilterCallbackForStolen(checkOnlyJunk)
+    checkOnlyJunk = checkOnlyJunk or false
+    return function(slot, slotIndex)
+        slot = checkCraftingStationSlot(slot, slotIndex)
+        if checkOnlyJunk then if not checkNoFilterTypesOrIsJunk(slot, true) then return false end end
+        local itemLink = util.GetItemLink(slot)
+        if not itemLink then return false end
+        if IsItemLinkStolen(itemLink) then
+d("[AF]GetFilterCallbackForStolen: " ..itemLink)
             return true
         end
         return false
@@ -403,6 +421,35 @@ local function GetFilterCallback(filterTypes, checkOnlyJunk, excludeThisItemIds)
             end
         end
         return false
+    end
+end
+
+--OTHER ADDONS CALLBACK functions
+local function GetFilterCallbackForOtherAddon(itemFilterTypeOfTheOtherAddon, checkOnlyJunk)
+    return function(slot, slotIndex)
+        return true
+        --[[
+        if AF.settings.debugSpam then d("Other addons filter callback func") end
+        if not itemFilterTypeOfTheOtherAddon then return end
+        local invType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+        if not invType then return end
+        local activeInventoryFilterBarButton = util.GetActiveInventoryFilterBarButtonData(invType)
+        if not activeInventoryFilterBarButton then return end
+        --Get the original callback of the button
+        local buttonData = activeInventoryFilterBarButton.m_buttonData
+        if not buttonData then return false end
+        local origButtonCallback = buttonData.filterType
+        if not origButtonCallback or type(origButtonCallback) ~= "function" then return false end
+        --Check for junk and prepare the crafting station slot
+        checkOnlyJunk = checkOnlyJunk or false
+        slot = checkCraftingStationSlot(slot, slotIndex)
+        --Call the original filter function
+        local origCallbackResult = origButtonCallback(slot, slotIndex)
+        if(not origCallbackResult) then return checkNoFilterTypesOrIsJunk(slot, checkOnlyJunk) end
+        if checkOnlyJunk then if not checkNoFilterTypesOrIsJunk(slot, true) then return false end end
+        --Return the original callback function result
+        return origCallbackResult
+        ]]
     end
 end
 
@@ -1590,6 +1637,18 @@ AF.subfilterCallbacks = {
                 {name = "Swift", addString = "Ring", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_SWIFT)},
                 {name = "Triune", addString = "Ring", filterCallback = GetFilterCallbackForJewelry({EQUIP_TYPE_RING}, ITEM_TRAIT_TYPE_JEWELRY_TRIUNE)},
             },
+        },
+    },
+    ]]
+
+--=============================================================================================================================================================================================
+    --CUSTOM ADDON TABs
+    --[[
+    HarvensStolenFilter = {
+        addonDropdownCallbacks = {},
+        All = {
+            filterCallback     = GetFilterCallbackForOtherAddon(ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER, false),
+            dropdownCallbacks   = {},
         },
     },
     ]]

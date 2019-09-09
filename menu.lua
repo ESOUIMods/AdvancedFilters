@@ -1,4 +1,4 @@
-if AdvancedFilters == nil then AdvancedFilters = {} end
+AdvancedFilters = AdvancedFilters or {}
 local AF = AdvancedFilters
 
 function AF.LAMSettingsMenu()
