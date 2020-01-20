@@ -1,27 +1,60 @@
---ToDo:07.09.2019
---Max todos: #12
+AdvancedFilters = AdvancedFilters or {}
+local AF = AdvancedFilters
+
+---==========================================================================================================================================================================
+--______________________________________________________________________________________________________________________
+--                                                  TODO - BEGIN
+--______________________________________________________________________________________________________________________
+--TODO Last updated: 2020-01-16
+--AF Version: 1.5.3.4
+--Max todos: #25
+
+--#14 Drag & drop item at vendor buyback inventory list throws error:
+--[[
+EsoUI/Ingame/Inventory/InventorySlot.lua:2597: Attempt to access a private function 'PickupStoreBuybackItem' from insecure code. The callstack became untrusted 3 stack frame(s) from the top.
+stack traceback:
+EsoUI/Ingame/Inventory/InventorySlot.lua:2597: in function '(anonymous)'
+|caaaaaa<Locals> inventorySlot = ud </Locals>|r
+EsoUI/Ingame/Utility/ZO_SlotUtil.lua:14: in function 'RunHandlers'
+|caaaaaa<Locals> handlerTable = [table:1]{}, slot = ud, handlers = [table:2]{}, i = 1 </Locals>|r
+(tail call): ?
+ZO_StackSplitSource_DragStart:4: in function '(main chunk)'
+|caaaaaa<Locals> self = ud, button = 1 </Locals>|r
+]]
+
+--#19: 2019-12-23, Feature, Baertram:
+--     Use context menu at dropdownboxes to show the last used filters from dropdown boxes at the given subfilterGroup
+--     e.g. select Weapons>1hd as subfilterGroup, select "Level filter 1-49" from dropdown filterbox.
+--     Right click the dropdown box and ALWAYS show entries "Invert current filter 1-49", "Select all".
+--     But also show below the last selected filter 1-49 now (up to last 5 selected ones from whatever subfilterGroup).
+--     Should check though if the filter of the dropdown box can be applied to the current panel and subfilterGroup! -> Possible?
+
+---==========================================================================================================================================================================
+--______________________________________________________________________________________________________________________
+--  UPDATE INFORMATION: since AF 1.5.3.3
+--______________________________________________________________________________________________________________________
+
 
 --______________________________________________________________________________________________________________________
---                                                  TODO
+--                                                  ADDED
 --______________________________________________________________________________________________________________________
---#10: 2019-08-16 - feature - Baertram
---Move the dropdown filter boxes from the subFilter buttons to a table containing the possible LibFiltes filterPanelIds
---for the submenu button. e.g. Move dropdown filter box of subFilter button Armor->All in the inventory to subFilter button
---Armor->All->LF_INVENTORY and also add LF_MAIL_SEND and LF_PLAYER_TRADE etc. so the dropdown boxes remember their filters
---differently for each active filterPanlId
 
---#11 2019-09-05 - bug - Bank withdraw panel shows all items but subfilterbar button "..." is enabled (after reopening the bank)
---
 
---#12 2019-09-07 - bug - Quality filter resets to All after reopenign the inventory or changing tabs
---Sorry to bother Beatram, but is there an update on a fix for the bag filter organizing?
---I set it to quality and still reverts back after changing tabs or reopening the inventory.
+--______________________________________________________________________________________________________________________
+--                                              ADDED ON REQUEST
+--______________________________________________________________________________________________________________________
 
 --______________________________________________________________________________________________________________________
 --                                                  FIXED
 --______________________________________________________________________________________________________________________
+--#22: Error messages multi language support
+--#23: User kebabman: Bank closing raised an error "user:/AddOns/AdvancedFilters/main.lua:304: attempt to index a nil value"
+--#24: Compatibility with CraftStoreFixedAndImproved rune chanages to show subfilter bars properly if vanilla UI and CS ui are mixed
+--#25: Unsupported filterBar recipes at enchanting table will not show an error message to the chat anymore
 
-
+---==========================================================================================================================================================================
+---==========================================================================================================================================================================
+---==========================================================================================================================================================================
 --______________________________________________________________________________________________________________________
 --                                                  NOT REPLICABLE
 --______________________________________________________________________________________________________________________
@@ -48,16 +81,17 @@ https://imgur.com/7btGZff
 user:/AddOns/AdvancedFilters/main.lua:213 attempt o index a nil value, craftingType = 1
 ]]
 
-
-AdvancedFilters = AdvancedFilters or {}
-local AF = AdvancedFilters
-
-local debugSpam = AF.debugSpam
+--______________________________________________________________________________________________________________________
+--                                                  TODO - END
+--______________________________________________________________________________________________________________________
+---==========================================================================================================================================================================
 
 --Constants in local variables
 local controlsForChecks = AF.controlsForChecks
+local smithingBaseVar = controlsForChecks.smithingBaseVar
 local smithingVar = controlsForChecks.smithing
 local enchantingVar = controlsForChecks.enchanting
+local enchantingBaseVar = controlsForChecks.enchantingBaseVar
 local retraitVar = controlsForChecks.retrait
 --local functions for speedup
 local util = AF.util
@@ -81,10 +115,13 @@ function AF.showChatDebug(functionName, chatOutputVars)
     local functionNameStr = tostring(functionName) or "n/a"
     functionNameStr = " " .. functionNameStr
     chatOutputVars = chatOutputVars or ""
+    local strings = AF.strings
+    local afPrefixError = ""
     --Center screen annonucenment
     local csaText
-    if AF.strings and AF.strings["errorCheckChatPlease"] then
-        csaText = AF.strings["errorCheckChatPlease"]
+    if strings and strings["errorCheckChatPlease"] then
+        csaText = strings["errorCheckChatPlease"]
+        afPrefixError = strings.AFPREFIXERROR
     else
         csaText = "|cFF0000[AdvancedFilters ERROR]|r Please read the error message in the chat!"
     end
@@ -94,20 +131,67 @@ function AF.showChatDebug(functionName, chatOutputVars)
         params:SetText(csaText)
         CENTER_SCREEN_ANNOUNCE:AddMessageWithParams(params)
     end
-
     --Chat output
+    if not strings then return end
     d(">====================================>")
-    d("[AdvancedFilters - |cFF0000ERROR|r]" .. "|c00ccff" .. tostring(functionNameStr) .. "|r")
-    d("!> Please answer the following 4 questions and send the answers (and if given: the variables shown in the lines, starting with ->, after the questions) to the addon's comments of AdvancedFilters @www.esoui.com:\nhttps://bit.ly/2IlJ56J")
-    d("1) What did you do?\n2)Where did you do it?\n3)Did you test if the error happenes with only the addon AdvancedFilters UPDATED activated (please test this!)?\n4)If error happens with other addons active: Which other addons were you using as the error happened?")
+    d(afPrefixError .. "|c00ccff" .. tostring(functionNameStr) .. "|r")
+    d(strings.errorWhatToDo1)
+    d(strings.errorWhatToDo2)
     if chatOutputVars ~= "" then
         d("-> " .. chatOutputVars)
     end
-    d("Thank you very much for your invested time and the will to fix this addon!")
     d("<====================================<")
 end
 local showChatDebug = AF.showChatDebug
 
+--Set the last used currentFilter of the bank inventory to internal AF data tables
+local function updateLastBankCurrentFilter(bankInvType)
+    local bankInvTypes = AF.bankInvTypes
+    --Check if current inventory is a bank withdraw panel
+    local isBankInvType = bankInvTypes[bankInvType] or false
+    if not isBankInvType then return end
+    if not PLAYER_INVENTORY.inventories or not PLAYER_INVENTORY.inventories[bankInvType] then return end
+    local currentBankFilter = PLAYER_INVENTORY.inventories[bankInvType].currentFilter
+--d(">Current bank currentFilter: " ..tostring(currentBankFilter))
+    AF.lastCurrentFilter[bankInvType] = currentBankFilter
+end
+
+--Is the last opened bank currentFilter saved then use this as new currentFilter if the current currentFilter is 0 ("All")
+local function checkIfBankLastCurrentFilterIsGiven(self, filterTab)
+    if AF.settings.debugSpam then d(">checkIfBankLastCurrentFilterIsGiven - START") end
+    local tabInvType = filterTab.inventoryType
+    local currentInvType = AF.currentInventoryType
+    local tabInventory = self.inventories[currentInvType]
+    --local currentInvType = AF.currentInventoryType
+    --local currentFilter = tabInventory.currentFilter
+    local currentFilter = self:GetTabFilterInfo(tabInvType, filterTab)
+
+--d(">invType: " ..tostring(currentInvType) ..", currentFilter: " ..tostring(currentFilter))
+    if not currentFilter then currentFilter = 0 end
+    if currentFilter == 0 then
+        local bankInvTypes = AF.bankInvTypes
+        --Check if current inventory is a bank withdraw panel
+        local isBankInvType = bankInvTypes[currentInvType] or false
+--d(">isBankInvType: " ..tostring(isBankInvType))
+        if isBankInvType == true then
+            if AF.settings.debugSpam then d(">isBank: true") end
+            --Check if for this bank withdraw panel a last currentFilter was known
+            if AF.lastCurrentFilter and AF.lastCurrentFilter[currentInvType] then
+                currentFilter = AF.lastCurrentFilter[currentInvType]
+                --Reset the last used currentFilter at the bank again so it is not re-used at next inventory:ChangeFilter() call
+--d(">lastBankCurrentFilter: " ..tostring(currentFilter))
+                AF.lastCurrentFilter[currentInvType] = nil
+--d(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+--d(">>>>> Last bank filter deleted!")
+--d(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            end
+        end
+    end
+    if AF.settings.debugSpam then d(">checkIfBankLastCurrentFilterIsGiven - END - currentFilter: " ..tostring(currentFilter)) end
+    return currentFilter
+end
+
+--Load the hooks of the different inventories etc.
 local function InitializeHooks()
     AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
 
@@ -145,9 +229,7 @@ local function InitializeHooks()
             local currentSubfilterBar = subfilterGroup.currentSubfilterBar
             if not currentSubfilterBar then return end
             local RefreshSubfilterBarUpdaterName = "RefreshSubfilterBarMetaTable_" .. invType .. "_" .. craftingType .. currentSubfilterBar.name
-            if debugSpam then
-                d("[AF]Metatable proxy: Calling ThrottledUpdate: " ..tostring(RefreshSubfilterBarUpdaterName))
-            end
+            if AF.settings.debugSpam then d("[AF]Metatable proxy: Calling ThrottledUpdate: " ..tostring(RefreshSubfilterBarUpdaterName)) end
             ThrottledUpdate(RefreshSubfilterBarUpdaterName,
                     10, RefreshSubfilterBar, currentSubfilterBar)
         end,
@@ -172,9 +254,7 @@ local function InitializeHooks()
     --Example: ENCHANTING creation & extraction, deconstruction/improvement for woodworking/blacksmithing/clothing & jewelry deconstruction/improvement
     --This function checks the inventory type and hides the old subfilterbar if needed.
     local function hideSubfilterBarSameParent(inventoryType)
-        if debugSpam then
-            d("[AF]hideSubfilterBarSameParent - inventoryType: " .. inventoryType)
-        end
+        if AF.settings.debugSpam then d("[AF]hideSubfilterBarSameParent - inventoryType: " .. inventoryType) end
         if not inventoryType then return end
         local mapInvTypeToInvTypeBefore = AF.mapInvTypeToInvTypeBefore
         if not mapInvTypeToInvTypeBefore then return end
@@ -183,25 +263,29 @@ local function InitializeHooks()
         if not invTypeBefore then return end
         local subfilterGroupBefore = AF.subfilterGroups[invTypeBefore]
         if subfilterGroupBefore ~= nil and subfilterGroupBefore.currentSubfilterBar then
+            if AF.settings.debugSpam then d(">[AF]hideSubfilterBarSameParent - currentSubfilterBar hidden") end
             subfilterGroupBefore.currentSubfilterBar:SetHidden(true)
         end
     end
 
-    --Show the subfilter abr of AdvancedFilters below the parent filter (e.g. button for armor, weapons, material, ...)
+    --Show the subfilter bar of AdvancedFilters below the parent filter (e.g. button for armor, weapons, material, ...)
     --The subfilter bars are defined via the file constants.lua in table "subfilterGroups".
     --The contents of the subfilter bars are defined in file constants.lua in table "subfilterButtonNames"
     --The filter contents and their callback functions (see top of file data.lua) for each content of the subfilter bar are defined in file data.lua in the table "AF.subfilterCallbacks"
     --Their parents (e.g. the player inventory or the bank or the crafting smithing station) are defined in file constants.lua in table "filterBarParents"
-    local function ShowSubfilterBar(currentFilter, craftingType, customInventoryFilterButtonsItemType)
-        if debugSpam then d("-----------------------------------------------") end
+    local function ShowSubfilterBar(currentFilter, craftingType, customInventoryFilterButtonsItemType, currentInvType)
+        if AF.settings.debugSpam then d(">>-----------------------------------------------\n----------------------------------------------->>") end
         --Update the y offsetts in pixels for the subfilter bar, so it is shown below the parent's filter buttons
         local function UpdateListAnchors(self, shiftY, p_subFilterBar)
-            if debugSpam then d(">UpdateListAnchors - shiftY: " .. tostring(shiftY)) end
+            if AF.settings.debugSpam then d(">UpdateListAnchors - shiftY: " .. tostring(shiftY)) end
             if self == nil then return end
             local layoutData = self.appliedLayout or BACKPACK_DEFAULT_LAYOUT_FRAGMENT.layoutData
             if not layoutData then return end
             local invTypeUpdateListAnchor = AF.currentInventoryType
-            local list = self.list or (self.inventories ~= nil and self.inventories[invTypeUpdateListAnchor].listView)
+            local list = self.list
+            if not list and self.inventories ~= nil and self.inventories[invTypeUpdateListAnchor] ~= nil then
+                list = self.inventories[invTypeUpdateListAnchor].listView
+            end
             if not list then
                 local moveInvBottomBarDown
                 local anchorTo = (p_subFilterBar and p_subFilterBar.control) or nil
@@ -237,35 +321,31 @@ local function InitializeHooks()
             --Should something else be moved or re-anchored (e.g. at the research panel the horizontal scroll list part)
             --AF.util.ReAnchorControlsForSubfilterBar(self, shiftY, p_currentFilter, p_craftingType)
         end
-        local invType = AF.currentInventoryType
+        local invType = currentInvType or AF.currentInventoryType
 
         --Check for custom added inventory filter button
-        if not customInventoryFilterButtonsItemType then
-            --CraftBag
-            if invType == INVENTORY_CRAFT_BAG then
-                local afCBCurrentFilter = AF.craftBagCurrentFilter
-                if debugSpam then
-                    d("[AF]ShowSubfilterBar craftbag, currentFilter: " .. tostring(currentFilter) .. ", afCBCurrentFilter: " .. tostring(afCBCurrentFilter))
-                end
-                if afCBCurrentFilter and afCBCurrentFilter ~= ITEMFILTERTYPE_ALL and afCBCurrentFilter == currentFilter then
-                    --Set prevention variable for function ShowSubfilterBar at the craftbag.
+        --CraftBag
+        if invType == INVENTORY_CRAFT_BAG then
+            local afCBCurrentFilter = AF.craftBagCurrentFilter
+            if AF.settings.debugSpam then d("[AF]ShowSubfilterBar craftbag, currentFilter: " .. tostring(currentFilter) .. ", afCBCurrentFilter: " .. tostring(afCBCurrentFilter)) end
+            if afCBCurrentFilter and afCBCurrentFilter ~= ITEMFILTERTYPE_ALL and afCBCurrentFilter == currentFilter then
+                --Set prevention variable for function ShowSubfilterBar at the craftbag.
 
-                    --Check if the currentFilter variable changed to 0 () now (Which happens if we opened the guild store after the craftbagm and reopening the craftbag now.
-                    --See issue 7 at AdvancedFilters github:  https://github.com/Randactyl/AdvancedFilters/issues/7
-                    local currentCBFilter = PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter
-                    --d(">currentCBFilter: " .. tostring(currentCBFilter))
-                    if currentCBFilter == ITEMFILTERTYPE_ALL then
-                        --The currentfilter reset, so we need to set it to the last known value again now
-                        PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter = afCBCurrentFilter
-                        currentFilter = afCBCurrentFilter
-                    end
+                --Check if the currentFilter variable changed to 0 () now (Which happens if we opened the guild store after the craftbagm and reopening the craftbag now.
+                --See issue 7 at AdvancedFilters github:  https://github.com/Randactyl/AdvancedFilters/issues/7
+                local currentCBFilter = PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter
+                --d(">currentCBFilter: " .. tostring(currentCBFilter))
+                if currentCBFilter == ITEMFILTERTYPE_ALL then
+                    --The currentfilter reset, so we need to set it to the last known value again now
+                    PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter = afCBCurrentFilter
+                    currentFilter = afCBCurrentFilter
                 end
             end
         end
         --Is the filterType of the current menuBar button a custom addon filter function or filterType?
         local currentFilterToUse = customInventoryFilterButtonsItemType or currentFilter
         if craftingType == nil then craftingType = GetCraftingType() end
-        if debugSpam then d("[AF]]ShowSubfilterBar - currentFilter: " .. tostring(currentFilter) .. ", craftingType: " .. tostring(craftingType) .. ", invType: " .. tostring(invType) .. ", customInventoryFilterButtonsItemType: " ..tostring(customInventoryFilterButtonsItemType)) end
+        if AF.settings.debugSpam then d("[AF]]ShowSubfilterBar - currentFilter: " .. tostring(currentFilter) .. ", craftingType: " .. tostring(craftingType) .. ", invType: " .. tostring(invType) .. ", customInventoryFilterButtonsItemType: " ..tostring(customInventoryFilterButtonsItemType)) end
         --[[
             --Guild store?
             if currentFilter == ITEMFILTERTYPE_TRADING_HOUSE then
@@ -282,6 +362,7 @@ local function InitializeHooks()
         local doDebugOutput = AF.settings.doDebugOutput
         local subfilterGroupMissingForInvType = false
         local subfilterBarMissing = false
+        local notSupportedPanel = false
         if doDebugOutput then
             local showErrorInChat = false
             if invType == nil then
@@ -297,16 +378,39 @@ local function InitializeHooks()
             if craftingType == nil then
                 showErrorInChat = true
             end
+            local subFilterBarName
             if invType ~= nil and craftingType ~= nil and currentFilterToUse ~= nil then
                 local nextSubfilterBar = AF.subfilterGroups[invType][craftingType][currentFilterToUse]
                 if nextSubfilterBar == nil then
                     subfilterBarMissing = true
                     showErrorInChat = true
+                    subFilterBarName = "N/A"
+                else
+                    subFilterBarName = nextSubfilterBar.name
+                end
+            end
+            --Check if any not supported panel is given and do not show a message in chat then
+            local notSupportedPanels = AF.notSupportedPanels
+            local notSupportedPanelForCrafting = notSupportedPanels[craftingType]
+            if notSupportedPanelForCrafting then
+                if craftingType ~= CRAFTING_TYPE_NONE then
+                    --Check which crafting it is and get the current crafting's mode variable/state
+                    local modeVar
+                    if craftingType == CRAFTING_TYPE_ENCHANTING then
+                        modeVar = enchantingVar.enchantingMode
+                    elseif craftingType == CRAFTING_TYPE_BLACKSMITHING or craftingType == CRAFTING_TYPE_CLOTHIER or craftingType == CRAFTING_TYPE_WOODWORKING then
+                        modeVar = smithingVar.mode
+                    end
+                    if modeVar ~= nil then
+                        if notSupportedPanelForCrafting[modeVar] == true then
+                            notSupportedPanel = true
+                        end
+                    end
                 end
             end
             --Show a debug message now and abort here?
-            if showErrorInChat and AF.subFiltersBarInactive[currentFilterToUse] == nil then
-                showChatDebug("ShowSubfilterBar - BEGIN", "InventoryType: " ..tostring(invType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. util.GetCraftingType() .. ", currentFilter: " .. tostring(currentFilterToUse) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing))
+            if showErrorInChat and AF.subFiltersBarInactive[currentFilterToUse] == nil and notSupportedPanel == false then
+                showChatDebug("ShowSubfilterBar - BEGIN", "InventoryType: " ..tostring(invType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. util.GetCraftingType() .. ", currentFilter: " .. tostring(currentFilterToUse) .. ", subFilterGroupMissing: " ..tostring(subfilterGroupMissingForInvType) .. ", subfilterBarMissing: " ..tostring(subfilterBarMissing) .. ", subfilterBarName: " ..tostring(subFilterBarName))
                 return false
             end
         end
@@ -321,12 +425,12 @@ local function InitializeHooks()
         hideSubfilterBarSameParent(invType)
         --Old subfilterbar(s) was(were) hidden, so check if a new one should be shown now
         if CheckIfNoSubfilterBarShouldBeShown(currentFilterToUse, invType) then
-            if debugSpam then d(">ABORT: CheckIfNoSubfilterBarShouldBeShown: true") end
+            if AF.settings.debugSpam then d("<<ABORT: CheckIfNoSubfilterBarShouldBeShown: true") end
             return
         end
         --do nothing if we're in a guild store and regular filters are disabled.
         if not ZO_TradingHouse:IsHidden() and util.libCIF._guildStoreSellFiltersDisabled then
-            --d("[AF]Trading house libCIF:guildSToreSellFiltersDisabled!")
+            if AF.settings.debugSpam then d("<<ABORT: Trading house libCIF:guildSToreSellFiltersDisabled!") end
             return
         end
 
@@ -349,8 +453,10 @@ local function InitializeHooks()
         local craftingInv
         local isCraftingInventoryType = false
         if subfilterBar then
+            local isCraftingPanel = IsCraftingPanelShown()
+            if AF.settings.debugSpam then d(">>New subfilterBar was found, isCraftingPanel: " ..tostring(isCraftingPanel)) end
             --Crafting
-            if IsCraftingPanelShown() then
+            if isCraftingPanel == true then
                 isCraftingInventoryType = IsCraftingStationInventoryType(subfilterBar.inventoryType)
                 if isCraftingInventoryType then
                     craftingInv = GetInventoryFromCraftingPanel(subfilterBar.inventoryType)
@@ -358,10 +464,9 @@ local function InitializeHooks()
             end
             --set current bar reference
             subfilterGroup.currentSubfilterBar = subfilterBar
-            if debugSpam then
-                d(">subfilterBar exists, name: " .. tostring(subfilterBar.control:GetName()) .. ",  inventoryType: " ..tostring(subfilterBar.inventoryType))
-            end
+            if AF.settings.debugSpam then d(">subfilterBar exists, name: " .. tostring(subfilterBar.control:GetName()) .. ",  inventoryType: " ..tostring(subfilterBar.inventoryType)) end
             --Update the currentFilter to the current inventory
+            --UpdateCurrentFilter(subfilterBar.inventoryType, currentFilter, isCraftingInventoryType, craftingInv)
             UpdateCurrentFilter(subfilterBar.inventoryType, currentFilter, isCraftingInventoryType, craftingInv)
             --activate current subfilter bar's button
             subfilterBar:ActivateButton(subfilterBar:GetCurrentButton())
@@ -401,47 +506,52 @@ local function InitializeHooks()
             subfilterGroup.currentSubfilterBar = nil
             --Error handling: Showing new subfilter bar
             if doDebugOutput then
-                if currentFilterToUse == nil or (currentFilterToUse ~= nil and AF.subFiltersBarInactive[currentFilterToUse] == nil) then
+                if (currentFilterToUse == nil or (currentFilterToUse ~= nil and AF.subFiltersBarInactive[currentFilterToUse] == nil)) and notSupportedPanel == false then
                     showChatDebug("ShowSubfilterBar - END", "InventoryType: " ..tostring(invType) .. ", craftingType: " ..tostring(craftingType) .. "/" .. util.GetCraftingType() .. ", currentFilter: " .. tostring(currentFilterToUse))
                 end
             end
         end
     end
 
-------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------------------------------
     --PREHOOKS
     --Filter changing function for normal inventories
     --Recognizes if a button like armor/weapons/material/... was changed at the inventory (which is a filter change internally)
     local function ChangeFilterInventory(self, filterTab)
-        --AF.filterTab = filterTab
+        --self: PLAYER_INVENTORY, filterTab: PLAYER_INVENTORY.filterTab
         local tabInvType = filterTab.inventoryType
         local currentInvType = AF.currentInventoryType
-        local currentFilter = self:GetTabFilterInfo(tabInvType, filterTab)
-        if debugSpam then
-            d("=====================================================================>")
+        --Is the bank opened but the current filterType is 0 then check if another currentFilter was set as the bank was closed last time
+        --and reset the subfilter bar to the last chosen one now. Therefor the currentFilter needs to be changed to the correct "last" one again:
+        --local currentFilter = self:GetTabFilterInfo(tabInvType, filterTab)
+        --local tabInventory = self.inventories[currentInvType]
+        --local currentFilter = tabInventory.currentFilter
+        local currentFilter = checkIfBankLastCurrentFilterIsGiven(self, filterTab)
+        if AF.settings.debugSpam then
+            d("===========================================================================================================>")
             d("[AF]PLAYER_INVENTORY:ChangeFilter, tabInvType: " ..tostring(tabInvType) .. ", curInvType: " .. tostring(currentInvType) .. ", currentFilter: " .. tostring(currentFilter))
         end
         --CraftBag
         if currentInvType == INVENTORY_CRAFT_BAG and AF.blockOnInventoryFilterChangedPreHookForCraftBag then
-            if debugSpam then
-                d("-----> CraftBag: PreHook is blocked. ABORT!")
-            end
+            if AF.settings.debugSpam then d("<<ABORT: CraftBag: PreHook is blocked!") end
             AF.blockOnInventoryFilterChangedPreHookForCraftBag = false
             return false
         end
         --Check if currentFilter is a function and then try to resolve the real filtervalue below it
         local customInventoryFilterButtonsItemType = util.CheckForCustomInventoryFilterBarButton(currentInvType, currentFilter)
         if customInventoryFilterButtonsItemType then
-            if debugSpam then d("[AF]ChangeFilterInventory-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
+            if AF.settings.debugSpam then d("[AF]ChangeFilterInventory-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
         end
-        if currentInvType ~= INVENTORY_TYPE_VENDOR_BUY then
-            ThrottledUpdate("ShowSubfilterBar" .. currentInvType, 10, ShowSubfilterBar, currentFilter, nil, customInventoryFilterButtonsItemType)
+        local doNotUpdateInventoriesWithInventoryChangeFilterFunction = AF.doNotUpdateInventoriesWithInventoryChangeFilterFunction
+        local shouldNotUpdateWithInventoryChangeFilterFunc = doNotUpdateInventoriesWithInventoryChangeFilterFunction[currentInvType] or false
+        if not shouldNotUpdateWithInventoryChangeFilterFunc then
+            ThrottledUpdate("ShowSubfilterBar" .. currentInvType, 20, ShowSubfilterBar, currentFilter, nil, customInventoryFilterButtonsItemType, currentInvType)
         end
         --Update the total count for quest items as there are no epxlicit filterBars available until today!
         local currentFilterToCheck = customInventoryFilterButtonsItemType or currentFilter
         local inactiveSubFilterBarInventoryType = AF.subFiltersBarInactive[currentFilterToCheck] or nil
         if inactiveSubFilterBarInventoryType ~= nil and inactiveSubFilterBarInventoryType ~= false then
-            if debugSpam then d(">inactiveSubFilterBarInventoryType: " ..tostring(inactiveSubFilterBarInventoryType) .. ", curInvType: " .. tostring(currentInvType) .. ", tabInvType: " ..tostring(tabInvType) .. ", currentFilterToCheck: " ..tostring(currentFilterToCheck)) end
+            if AF.settings.debugSpam then d(">inactiveSubFilterBarInventoryType: " ..tostring(inactiveSubFilterBarInventoryType) .. ", curInvType: " .. tostring(currentInvType) .. ", tabInvType: " ..tostring(tabInvType) .. ", currentFilterToCheck: " ..tostring(currentFilterToCheck)) end
             --Compare the inventory tab's inventoryType with the inactive inventoryType, and
             --set the inventory to update accordingly
             local invType
@@ -456,6 +566,21 @@ local function InitializeHooks()
                     50, util.updateInventoryInfoBarCountLabel, invType, false)
         end
     end
+    -->Throws error message if you open inventory after reloadui:
+    --SecurePostHook(PLAYER_INVENTORY, "ChangeFilter", ChangeFilterInventory)
+    --[[
+            Attempt to call a nil value
+        stack traceback:
+        [C]: in function 'PostHookFunction'
+        EsoUI/Ingame/Inventory/Inventory.lua:44: in function 'HandleTabSwitch'
+        |caaaaaa<Locals> tabData = [table:1]{filterType = 1, highlight = "EsoUI/Art/Inventory/inventory_...", activeTabText = "Waffen", ignoreVisibleCheck = F, inventoryType = 1, tooltipText = "Waffen", pressed = "EsoUI/Art/Inventory/inventory_...", normal = "EsoUI/Art/Inventory/inventory_...", descriptor = 1} </Locals>|r
+        EsoUI/Libraries/ZO_MenuBar/ZO_MenuBar.lua:284: in function 'MenuBarButton:Release'
+        |caaaaaa<Locals> self = [table:2]{m_locked = T, m_highlightHidden = F, m_state = 1}, upInside = T, skipAnimation = F, playerDriven = T, buttonData = [table:1] </Locals>|r
+        EsoUI/Libraries/ZO_MenuBar/ZO_MenuBar.lua:636: in function 'ZO_MenuBarButtonTemplate_OnMouseUp'
+        |caaaaaa<Locals> self = ud, button = 1, upInside = T </Locals>|r
+        ZO_MainMenuCategoryBarButton1_MouseUp:3: in function '(main chunk)'
+        |caaaaaa<Locals> self = ud, button = 1, upInside = T, ctrl = F, alt = F, shift = F, command = F </Locals>|r
+    ]]
     ZO_PreHook(PLAYER_INVENTORY, "ChangeFilter", ChangeFilterInventory)
 
     --[[
@@ -489,14 +614,18 @@ local function InitializeHooks()
         local currentFilter = util.MapCraftingStationFilterType2ItemFilterType(filter, invType, craftingType)
         --Is the filterType of the current menuBar button a custom addon filter function or filterType?
         --Then try to resolve the real filtervalue below it
-        local customInventoryFilterButtonsItemType = util.CheckForCustomInventoryFilterBarButton(AF.currentInventoryType, currentFilter)
+        local customInventoryFilterButtonsItemType = util.CheckForCustomInventoryFilterBarButton(invType, currentFilter)
         if customInventoryFilterButtonsItemType then
-            if debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
+            if AF.settings.debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
         end
-        if debugSpam then
+        if AF.settings.debugSpam then
             d("=====================================================================>")
-            d("[AF]ChangeFilterCrafting, invType: " .. tostring(invType) .. ", craftingType: " .. tostring(craftingType) .. ", filterType: " ..  tostring(filter) .. ", currentFilter: " .. tostring(currentFilter))
+            d("[AF]ChangeFilterCrafting, invType: " .. tostring(invType) .. ", craftingType: " .. tostring(craftingType) .. ", filterType/typeFilter: " ..  tostring(filter) .. ", currentFilter: " .. tostring(currentFilter) .. ", customInventoryFilterButtonsItemType: " ..tostring(customInventoryFilterButtonsItemType))
         end
+        --Old subfilterbar(s) was(were) hidden, so check if a new one should be shown now
+        if CheckIfNoSubfilterBarShouldBeShown(currentFilter, invType, craftingType, filter) then return end
+
+        --Update the subfilter bars
         ThrottledUpdate("ShowSubfilterBar" .. invType .. "_" .. craftingType, 10,
                 ShowSubfilterBar, currentFilter, craftingType, customInventoryFilterButtonsItemType)
 
@@ -509,13 +638,12 @@ local function InitializeHooks()
                     RefreshSubfilterBar, currentSubfilterBar)
         end, 50)
     end
-    --ZO_PreHook(smithingVar.creationPanel, "ChangeTypeFilter", changeFilterCraftingNew)
-    ZO_PreHook(smithingVar.refinementPanel.inventory,       "ChangeFilter",     function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
-    ZO_PreHook(smithingVar.deconstructionPanel.inventory,   "ChangeFilter",     function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
-    ZO_PreHook(smithingVar.improvementPanel.inventory,      "ChangeFilter",     function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
-    ZO_PreHook(smithingVar.researchPanel,                   "ChangeTypeFilter", function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
-    ZO_PreHook(retraitVar.retraitPanel.inventory,           "ChangeFilter",     function(...) delayedCall(10, ChangeFilterCrafting, ...) end)
-
+    --ZO_PreHook(smithingVar.creationPanel,                 "ChangeTypeFilter", changeFilterCraftingNew)
+    ZO_PreHook(smithingVar.refinementPanel.inventory,       "ChangeFilter",     function(...) delayedCall(15, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.deconstructionPanel.inventory,   "ChangeFilter",     function(...) delayedCall(15, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.improvementPanel.inventory,      "ChangeFilter",     function(...) delayedCall(15, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(smithingVar.researchPanel,                   "ChangeTypeFilter", function(...) delayedCall(15, ChangeFilterCrafting, ...) end)
+    ZO_PreHook(retraitVar.retraitPanel.inventory,           "ChangeFilter",     function(...) delayedCall(15, ChangeFilterCrafting, ...) end)
 
     local function ChangeFilterEnchanting(self, filterTab)
         zo_callLater(function()
@@ -525,9 +653,9 @@ local function InitializeHooks()
             --Check if currentFilter is a function and then try to resolve the real filtervalue below it
             local customInventoryFilterButtonsItemType = util.CheckForCustomInventoryFilterBarButton(AF.currentInventoryType, currentFilter)
             if customInventoryFilterButtonsItemType then
-                if debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
+                if AF.settings.debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
             end
-            if debugSpam then
+            if AF.settings.debugSpam then
                 d("=====================================================================>")
                 d("[AF]ChangeFilterEnchanting - currentFilter: " ..tostring(currentFilter) .. ", currentInventoryType: " .. tostring(invType) .. ", craftingType: " ..tostring(craftingType))
             end
@@ -546,6 +674,64 @@ local function InitializeHooks()
     end
     ZO_PreHook(enchantingVar.inventory, "ChangeFilter", ChangeFilterEnchanting)
 
+    --ZO_Enchanting.enchantingMode update function
+    local function HookEnchantingOnModeUpdated(self, mode)
+        if AF.settings.debugSpam then
+            d("....................................................>")
+            d("[AF]ENCHANTING:OnModeUpdated, enchantingMode: " .. tostring(mode))
+        end
+        --[[
+            --Enchanting modes
+            ENCHANTING_MODE_CREATION = 1
+            ENCHANTING_MODE_EXTRACTION = 2
+            ENCHANTING_MODE_RECIPES = 3
+            ENCHANTING_MODE_NONE = 0
+        ]]
+        if     mode == ENCHANTING_MODE_CREATION then
+            AF.currentInventoryType = LF_ENCHANTING_CREATION
+        elseif mode == ENCHANTING_MODE_EXTRACTION then
+            AF.currentInventoryType = LF_ENCHANTING_EXTRACTION
+        end
+        return false
+    end
+    --Multicraft addon breaks this addon! Disable it before you can use AdvancedFilters
+    if AF.otherAddons["MultiCraft"] or MultiCraft ~= nil then
+        local strings = AF.strings
+        showChatDebug("PostHook ZO_Enchanting OnModeUpdated -> " .. strings.errorOtherAddonsMulticraft, strings.errorOtherAddonsMulticraftLong)
+        return
+    end
+
+    --Special hooks needed if other addons like CraftStore are enabled
+    --CraftStore addon is enabled?
+    if CS then
+        local enchantingCreateButtonCS    = CraftStoreFixed_RuneCreateButton --Create
+        local enchantingExtractButtonCS   = CraftStoreFixed_RuneRefineButton --Extract
+        --local enchantingFurnitureButtonCS = CraftStoreFixed_RuneFurnitureButton --Recipes
+        local function enchantingMenuBarButtonClicked(ctrl, mouseButton, upInside, enchantingMode)
+            --CraftStore addon is enabled?
+            if not CS then return end
+            if ctrl and mouseButton ~= MOUSE_BUTTON_INDEX_RIGHT and upInside == true and enchantingMode then
+                local csAccountSettings = CS.Account.options
+                if not csAccountSettings or not csAccountSettings.userune then return end
+                local enchantingModeToCSRuneSetting = {
+                    [ENCHANTING_MODE_CREATION] 		= csAccountSettings.userunecreation,
+                    [ENCHANTING_MODE_EXTRACTION] 	= csAccountSettings.useruneextraction,
+                    [ENCHANTING_MODE_RECIPES] 		= csAccountSettings.userunerecipe,
+                }
+                local csRuneSettingState = enchantingModeToCSRuneSetting[enchantingMode] or false
+                --The current panel does NOT use the CraftStore rune UI but the vanilla UI?
+                if csRuneSettingState == false then
+                    --Call the ENCHANTING.enchantingMode update procedures via the function "ChangeFilterEnchanting" as if the inventory filter was changed
+                    enchantingVar.enchantingMode = enchantingMode
+                    HookEnchantingOnModeUpdated(enchantingBaseVar, enchantingMode)
+                    ChangeFilterEnchanting(enchantingVar.inventory, nil)
+                end
+            end
+        end
+        ZO_PreHookHandler(enchantingCreateButtonCS,       "OnMouseUp", function(ctrl, mouseButton, upInside, ...) enchantingMenuBarButtonClicked(ctrl, mouseButton, upInside, ENCHANTING_MODE_CREATION) end)
+        ZO_PreHookHandler(enchantingExtractButtonCS,      "OnMouseUp", function(ctrl, mouseButton, upInside, ...) enchantingMenuBarButtonClicked(ctrl, mouseButton, upInside, ENCHANTING_MODE_EXTRACTION) end)
+        --ZO_PreHookHandler(enchantingFurnitureButtonCS,    "OnMouseUp", function(ctrl, mouseButton, upInside, ...) enchantingMenuBarButtonClicked(ctrl, mouseButton, upInside, ENCHANTING_MODE_RECIPES) end)
+    end
 
     --FRAGMENT HOOKS
     local function hookFragment(fragment, inventoryType)
@@ -556,7 +742,7 @@ local function InitializeHooks()
                 --Check if currentFilter is a function and then try to resolve the real filtervalue below it
                 local customInventoryFilterButtonsItemType = util.CheckForCustomInventoryFilterBarButton(AF.currentInventoryType, STORE_WINDOW.currentFilter)
                 if customInventoryFilterButtonsItemType then
-                    if debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
+                    if AF.settings.debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
                 end
                 ThrottledUpdate("ShowSubfilterBar" .. inventoryType, 10,
                         ShowSubfilterBar, STORE_WINDOW.currentFilter, nil, customInventoryFilterButtonsItemType)
@@ -571,21 +757,19 @@ local function InitializeHooks()
                     --d("[AF]CraftBag fragment showing, currentFilter: " .. tostring(currentCBFilter) .. ", afCBCurrentFilter: " .. tostring(afCBCurrentFilter))
                     --fragmentType = "CraftBag"
                 end
-                if debugSpam then
+                if AF.settings.debugSpam then
                     d("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~>")
                     d("[AF]hookFragment " .. tostring(fragment.control:GetName()) .. " - fragment OnShow -> ShowSubfilterBar")
                 end
                 --Check if currentFilter is a function and then try to resolve the real filtervalue below it
                 local customInventoryFilterButtonsItemType = util.CheckForCustomInventoryFilterBarButton(AF.currentInventoryType, currentFilter)
                 if customInventoryFilterButtonsItemType then
-                    if debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
+                    if AF.settings.debugSpam then d("[AF]ChangeFilterCrafting-Found custom inventory: " .. tostring(customInventoryFilterButtonsItemType)) end
                 end
-                ThrottledUpdate("ShowSubfilterBar" .. inventoryType, 10, ShowSubfilterBar, currentFilter, nil, customInventoryFilterButtonsItemType)
+                ThrottledUpdate("ShowSubfilterBar" .. inventoryType, 20, ShowSubfilterBar, currentFilter, nil, customInventoryFilterButtonsItemType)
             end
             --Call RefreshSubfilterBar via "proxy" metatable function on the inventoryType
-            if debugSpam then
-                d("---------->Calling RefreshSubfilterBar via 'proxy' function")
-            end
+            if AF.settings.debugSpam then d("---------->Calling RefreshSubfilterBar via 'proxy' function") end
             PLAYER_INVENTORY.isListDirty = track(PLAYER_INVENTORY.isListDirty)
         end
 
@@ -598,7 +782,7 @@ local function InitializeHooks()
             --CraftBag
             if inventoryType == INVENTORY_CRAFT_BAG then
                 AF.craftBagCurrentFilter = PLAYER_INVENTORY.inventories[INVENTORY_CRAFT_BAG].currentFilter
-                if debugSpam then d("[AF]CraftBag fragment hiding, currentFilter: " .. tostring(AF.craftBagCurrentFilter)) end
+                if AF.settings.debugSpam then d("[AF]CraftBag fragment hiding, currentFilter: " .. tostring(AF.craftBagCurrentFilter)) end
             end
             --Reset the current inventory type to the normal inventory
             AF.currentInventoryType = INVENTORY_BACKPACK
@@ -630,7 +814,7 @@ local function InitializeHooks()
     -->See github, issue 7:   https://github.com/Randactyl/AdvancedFilters/issues/7
     local function hookScene(scene, filterPanelId)
         local function onSceneShowing()
-            if debugSpam then
+            if AF.settings.debugSpam then
                 d("???????????????????????????????????????????????>>>")
                 d("[AF]Scene showing: " .. tostring(SCENE_MANAGER.currentScene.name))
             end
@@ -644,7 +828,7 @@ local function InitializeHooks()
             end
         ]]
         local function onSceneHiding()
-            if debugSpam then
+            if AF.settings.debugSpam then
                 d("<<<???????????????????????????????????????????????")
                 d("[AF]Scene hiding: " .. tostring(SCENE_MANAGER.currentScene.name))
             end
@@ -696,7 +880,7 @@ local function InitializeHooks()
         ]]
         local craftType = util.GetCraftingType()
         local isJewelryCrafting = (craftType == CRAFTING_TYPE_JEWELRYCRAFTING) or false
-        if debugSpam then
+        if AF.settings.debugSpam then
             d("....................................................>")
             d("[AF]SMITHING:SetMode - mode: " ..tostring(mode) .. ", craftingType: " ..tostring(craftType))
         end
@@ -737,58 +921,16 @@ local function InitializeHooks()
         end
         return false
     end
-    --ZO_PreHook(ZO_Smithing, "SetMode", HookSmithingSetMode)
-    local origSmithingSetMode = ZO_Smithing.SetMode
-    ZO_Smithing.SetMode = function(...)
-        origSmithingSetMode(...)
-        HookSmithingSetMode(...)
-    end
+    SecurePostHook(smithingBaseVar, "SetMode", HookSmithingSetMode)
 
     --ENCHANTING
-    local function HookEnchantingSetEnchantingMode(self, mode)
-        if debugSpam then
-            d("....................................................>")
-            d("[AF]ENCHANTING:SetEnchantingMode/OnModeUpdated, mode: " .. tostring(mode))
-        end
-        --[[
-            --Enchanting modes
-            ENCHANTING_MODE_CREATION = 1
-            ENCHANTING_MODE_EXTRACTION = 2
-            ENCHANTING_MODE_NONE = 0
-        ]]
-        if     mode == ENCHANTING_MODE_CREATION then
-            AF.currentInventoryType = LF_ENCHANTING_CREATION
-        elseif mode == ENCHANTING_MODE_EXTRACTION then
-            AF.currentInventoryType = LF_ENCHANTING_EXTRACTION
-        end
-        return false
-    end
-    --Multicraft addon breaks this addon! Disable it before you can use AdvancedFilters
-    if AF.otherAddons["MultiCraft"] or MultiCraft ~= nil then
-        showChatDebug("PostHook ZO_Enchanting OnModeUpdated -> PLEASE DISABLE THE ADDON \'MultiCraft\'!", AF.errorStrings["MultiCraft"])
-        return
-    end
-    --ZO_PreHook(ZO_Enchanting, "SetEnchantingMode", HookEnchantingSetEnchantingMode)
-    local origEnchantingSetEnchantMode = ZO_Enchanting.SetEnchantingMode
-    if origEnchantingSetEnchantMode ~= nil then
-        ZO_Enchanting.SetEnchantingMode = function(...)
-            local retVar = origEnchantingSetEnchantMode(...)
-            HookEnchantingSetEnchantingMode(...)
-            return retVar
-        end
-    else
-        --ZO_Enchanting:SetEnchantingMode does not exist anymore (PTS -> Scalebreaker) and was replaced by ZO_Enchanting:OnModeUpdated()
-        origEnchantingSetEnchantMode = ZO_Enchanting.OnModeUpdated
-        ZO_Enchanting.OnModeUpdated = function(self, ...)
-            origEnchantingSetEnchantMode(self, ...)
-            HookEnchantingSetEnchantingMode(self, self.enchantingMode)
-        end
-    end
+    --> See function HookEnchantingOnModeUpdated above at the filter changes (needed there as well already for CraftStoreFixedAndImproved fixes!)
+    SecurePostHook(enchantingBaseVar, "OnModeUpdated", function(self) HookEnchantingOnModeUpdated(self, self.enchantingMode) end)
 
     --Retrait
     -->Currently not working via PostHook as SetMode is not called! One needs to use the scene callback for "StateChange" (see further up!)
     local function HookRetraitSetMode(self, mode)
-        if debugSpam then
+        if AF.settings.debugSpam then
             d("....................................................>")
             d("[AF]ZO_RetraitStation_Keyboard.SetMode - mode: " ..tostring(mode))
         end
@@ -804,21 +946,22 @@ local function InitializeHooks()
         return false
     end
     --ZO_PreHook(ZO_RetraitStation_Keyboard, "SetMode", HookRetraitSetMode)
+    --[[
     local origRetraitSetMode = ZO_RetraitStation_Keyboard.SetMode
     --Is currently (2019-03-11) not called! So we need to use the scene of the retrait station to set the inventory type variable for AF
     ZO_RetraitStation_Keyboard.SetMode = function(...)
         origRetraitSetMode(...)
         HookRetraitSetMode(...)
     end
+    ]]
+    SecurePostHook(ZO_RetraitStation_Keyboard, "SetMode", HookRetraitSetMode)
 
     --Overwrite the standard inventory update function for the used slots/totla slots
     local function hookInventoryInfoBar()
         --Callback function for ZO_InventoryManager:UpdateFreeSlots(inventoryType) -> Will be called with ThrottledUpdate to
         --prevent being run too often in short time
         local function ZO_InventoryManagerUpdateFreeSlotsCallback(self, inventoryType)
-            if debugSpam then
-                d("[AF]>>ZO_InventoryManagerUpdateFreeSlotsCallbacks, inventoryType: " ..tostring(inventoryType) .. ", infoBar: " ..tostring(self:GetContextualInfoBar():GetName()))
-            end
+            if AF.settings.debugSpam then d("[AF]>>ZO_InventoryManagerUpdateFreeSlotsCallbacks, inventoryType: " ..tostring(inventoryType) .. ", infoBar: " ..tostring(self:GetContextualInfoBar():GetName())) end
             local inventory = self.inventories[inventoryType]
             local freeSlotType
             local altFreeSlotType
@@ -856,7 +999,7 @@ local function InitializeHooks()
                 if cbeActive then freeSlotType = INVENTORY_CRAFT_BAG end
                 if inventoryType == INVENTORY_QUEST_ITEM then freeSlotType = INVENTORY_QUEST_ITEM end
                 local numFilteredAndShownItems = util.getInvItemCount(freeSlotType)
-                local freeSlotsShown = inventoryType == freeSlotType and numFilteredAndShownItems or 0
+                local freeSlotsShown = (inventoryType == freeSlotType and numFilteredAndShownItems) or 0
                 local freeSlotText = ""
 
                 if(numUsedSlots < numSlots) then
@@ -865,7 +1008,7 @@ local function InitializeHooks()
                     freeSlotText = zo_strformat(freeSlotTypeInventory.freeSlotsFullStringId, numUsedSlots, numSlots)
                 end
                 local newFreeSlotText
-                if freeSlotsShown > 0 and not hideItemCount then
+                if freeSlotsShown > 0 and (hideItemCount ~= nil and hideItemCount == false) then
                     local colorString = ""
                     local itemCountLabelColor = settings.itemCountLabelColor
                     local colorStringColorDef = ZO_ColorDef:New(itemCountLabelColor["r"], itemCountLabelColor["g"], itemCountLabelColor["b"], itemCountLabelColor["a"])
@@ -881,7 +1024,7 @@ local function InitializeHooks()
                 local numUsedSlots, numSlots = self:GetNumSlots(altFreeSlotType)
                 local altFreeSlotInventory = self.inventories[altFreeSlotType] --grab the alternateInventory to use it's string id's
                 local numFilteredAndShownItems = util.getInvItemCount(altFreeSlotType)
-                local altFreeSlotsShown = inventoryType == altFreeSlotType and numFilteredAndShownItems or 0
+                local altFreeSlotsShown = (inventoryType == altFreeSlotType and numFilteredAndShownItems) or 0
                 local altFreeSlotText = ""
 
                 if(numUsedSlots < numSlots) then
@@ -890,7 +1033,7 @@ local function InitializeHooks()
                     altFreeSlotText = zo_strformat(altFreeSlotInventory.freeSlotsFullStringId, numUsedSlots, numSlots)
                 end
                 local newAltFreeSlotText
-                if altFreeSlotsShown > 0 and not hideItemCount then
+                if altFreeSlotsShown > 0 and (hideItemCount ~= nil and hideItemCount == false) then
                     local colorString = ""
                     local itemCountLabelColor = settings.itemCountLabelColor
                     local colorStringColorDef = ZO_ColorDef:New(itemCountLabelColor["r"], itemCountLabelColor["g"], itemCountLabelColor["b"], itemCountLabelColor["a"])
@@ -905,14 +1048,11 @@ local function InitializeHooks()
 
         --Overwrite the update function for the free slots label in inventories
         function ZO_InventoryManager:UpdateFreeSlots(inventoryType)
-            ThrottledUpdate("ZO_InventoryManagerUpdateFreeSlotsCallback" .. tostring(inventoryType), 100,
-                    ZO_InventoryManagerUpdateFreeSlotsCallback, self, inventoryType)
+            ThrottledUpdate("ZO_InventoryManagerUpdateFreeSlotsCallback" .. tostring(inventoryType), 100, ZO_InventoryManagerUpdateFreeSlotsCallback, self, inventoryType)
         end
 
         function ZO_QuickslotManager:UpdateFreeSlots()
-            if debugSpam then
-                d("[AF]ZO_QuickslotManager:UpdateFreeSlots")
-            end
+            if AF.settings.debugSpam then d("[AF]ZO_QuickslotManager:UpdateFreeSlots") end
             local numUsedSlots, numSlots = PLAYER_INVENTORY:GetNumSlots(INVENTORY_BACKPACK)
             local numFilteredAndShownItems = #self.list.data
             local freeSlotsShown = numFilteredAndShownItems or 0
@@ -926,7 +1066,7 @@ local function InitializeHooks()
                 freeSlotText = zo_strformat(SI_INVENTORY_BACKPACK_COMPLETELY_FULL, numUsedSlots, numSlots)
             end
             local newFreeSlotText
-            if freeSlotsShown > 0 and not hideItemCount then
+            if freeSlotsShown > 0 and (hideItemCount ~= nil and hideItemCount == false) then
                 local colorString = ""
                 local itemCountLabelColor = settings.itemCountLabelColor
                 local colorStringColorDef = ZO_ColorDef:New(itemCountLabelColor["r"], itemCountLabelColor["g"], itemCountLabelColor["b"], itemCountLabelColor["a"])
@@ -941,9 +1081,7 @@ local function InitializeHooks()
         --Overwrite the function UpdateInventorySlots from esoui/esoui/ingame/inventory/inventorytemplates.lua
         --for the crafting stations, in order to update the filter count amount properly in the infoBars
         function UpdateInventorySlots(infoBar)
-            if debugSpam then
-                d("[AF]UpdateInventorySlots: " .. tostring(infoBar:GetName()))
-            end
+            if AF.settings.debugSpam then d("[AF]UpdateInventorySlots: " .. tostring(infoBar:GetName())) end
             --Only for crafting station inventory types as the others are managed within function ZO_InventoryManager:UpdateFreeSlots(inventoryType) above!
             local invType = AF.currentInventoryType
             local isCraftingInvType = IsCraftingStationInventoryType(invType)
@@ -954,7 +1092,7 @@ local function InitializeHooks()
             local slotsLabel = infoBar:GetNamedChild("FreeSlots")
             local numUsedSlots, numSlots = PLAYER_INVENTORY:GetNumSlots(INVENTORY_BACKPACK)
             local numFilteredAndShownItems = util.getInvItemCount(invType, isCraftingInvType)
-            local freeSlotsShown = ((numFilteredAndShownItems > 0) and numFilteredAndShownItems) or 0
+            local freeSlotsShown = (numFilteredAndShownItems ~= nil and numFilteredAndShownItems > 0) and numFilteredAndShownItems or 0
             --d(">numUsedSlots: " .. tostring(numUsedSlots) .. ", numSlots: " .. tostring(numSlots) .. ", numFilteredAndShownItems: " .. tostring(numFilteredAndShownItems) ..", freeSlotsShown: " ..tostring(freeSlotsShown))
             local freeSlotText = ""
             if numUsedSlots < numSlots then
@@ -963,7 +1101,7 @@ local function InitializeHooks()
                 freeSlotText = zo_strformat(SI_INVENTORY_BACKPACK_COMPLETELY_FULL, numUsedSlots, numSlots)
             end
             local newFreeSlotText
-            if freeSlotsShown > 0 and not hideItemCount then
+            if freeSlotsShown > 0 and (hideItemCount ~= nil and hideItemCount == false) then
                 local colorString = ""
                 local itemCountLabelColor = settings.itemCountLabelColor
                 local colorStringColorDef = ZO_ColorDef:New(itemCountLabelColor["r"], itemCountLabelColor["g"], itemCountLabelColor["b"], itemCountLabelColor["a"])
@@ -987,11 +1125,10 @@ local function InitializeHooks()
         end, 50)
     end
     ZO_PreHook(QUICKSLOT_WINDOW, "ChangeFilter", ChangeFilterQuickSlot)
+
     --Update the count of items filtered if text search boxes are used (ZOs or Votans Search Box)
     ZO_PreHook(ZO_InventoryManager, "UpdateEmptyBagLabel", function(ctrl, inventoryType, isEmptyList)
-        if debugSpam then
-            d("[AF]ZO_InventoryManager:UpdateEmptyBagLabel - inventoryType: " ..tostring(inventoryType))
-        end
+        if AF.settings.debugSpam then d("[AF]ZO_InventoryManager:UpdateEmptyBagLabel - inventoryType: " ..tostring(inventoryType)) end
         --Check if the currently active focus in inside a search box
         local inventory = AF.inventories[inventoryType]
         local searchBox
@@ -1027,8 +1164,8 @@ local function InitializeHooks()
 
 end
 
+--Preset the crafting station panels's currentFilter variables
 local function PresetCraftingStationHookVariables()
-    --Preset the crafting station panels's currentFilter variables
     local mapItemFilterType2CraftingStationFilterType = util.MapItemFilterType2CraftingStationFilterType
     smithingVar.refinementPanel.inventory.currentFilter     = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_REFINE_SMITHING,        LF_SMITHING_REFINE,         CRAFTING_TYPE_BLACKSMITHING)
     smithingVar.deconstructionPanel.inventory.currentFilter = mapItemFilterType2CraftingStationFilterType(ITEMFILTERTYPE_AF_WEAPONS_SMITHING,       LF_SMITHING_DECONSTRUCT,    CRAFTING_TYPE_BLACKSMITHING)
@@ -1078,9 +1215,7 @@ end
 
 --Set variables in AF global namespace for function util.RefreshSubfilterBar
 local function SetBankEventVariable(bankType, opened)
-    if debugSpam then
-        d("[AF]EVENT_OPEN/CLOSE_BANK, opened: " .. tostring(opened) .. ", bankType: " ..tostring(bankType))
-    end
+    if AF.settings.debugSpam then d("[AF]EVENT_OPEN/CLOSE_BANK, opened: " .. tostring(opened) .. ", bankType: " ..tostring(bankType)) end
     if bankType == nil or bankType == "" then return false end
     opened = opened or false
     local bankInvType
@@ -1092,14 +1227,16 @@ local function SetBankEventVariable(bankType, opened)
     elseif bankType == "gb" then
         bankInvType = INVENTORY_GUILD_BANK
         AF.guildBankOpened = opened
-    --House storage
+        --House storage
     elseif bankType == "hb" then
         bankInvType = INVENTORY_HOUSE_BANK
         AF.houseBankOpened = opened
     end
     --Save the last opened subfilterBar button to the global AF table, so it can be used later on as the bank get's opened
     --again to re-open the samel subfilterGroup and button
-    if not opened and bankInvType then
+    if not bankInvType then return end
+    --Bank is closed
+    if not opened then
         --Bank deposit
         local currentActiveSubfilterBarButtonDeposit = util.GetActiveSubfilterBarButton(INVENTORY_BACKPACK)
         if currentActiveSubfilterBarButtonDeposit then
@@ -1107,25 +1244,35 @@ local function SetBankEventVariable(bankType, opened)
             AF.bankLastActiveSubfilterBarButton[bankInvType] = currentActiveSubfilterBarButtonDeposit
         end
         --Bank withdraw
+        --Set the currently active currentFilter of the bank inventory
+        updateLastBankCurrentFilter(bankInvType)
+        --Set last active button at the bank
         local currentActiveSubfilterBarButtonWithdraw = util.GetActiveSubfilterBarButton(bankInvType)
         if currentActiveSubfilterBarButtonWithdraw then
             AF.bankLastActiveSubfilterBarButton = AF.bankLastActiveSubfilterBarButton or {}
             AF.bankLastActiveSubfilterBarButton[bankInvType] = currentActiveSubfilterBarButtonWithdraw
         end
+    --Bank is opened
+    --else
+        --Reset the last used bank currentFilter after 1/2 second
+        --Disabled here. Moved to: Bank subfilterBar shown, using last used lastCurrentFilter
+        --[[
+        zo_callLater(function()
+            AF.lastCurrentFilter[bankInvType] = nil
+        end, 500)
+        ]]
     end
 end
 
 --Check if other addons are activated and output an error message if they brak AdvancedFilters
 function AF.checkForOtherAddonErrors(eventName, initial)
-    --Debug spam is enabled?
-    debugSpam = false
-    if AF.settings then
-        debugSpam = AF.settings.debugSpam
-    end
+    --Check if needed libraries are given -> Chat is activated here so we can see error messages!
+    if AF.dependenciesLoaded == false then AF.loadLibraries(true) end
+
     --Check for other addons
     if not AF.otherAddons then return end
     if AF.otherAddons["MultiCraft"] or MultiCraft ~= nil then
-        showChatDebug("Other addon breaks \'AdvancedFilters\' -> PLEASE DISABLE THE ADDON \'MultiCraft\'!", AF.errorStrings["MultiCraft"])
+        showChatDebug(AF.strings.errorOtherAddonsMulticraft, AF.strings.errorOtherAddonsMulticraftLong)
         return
     end
 end
@@ -1135,8 +1282,10 @@ local function AdvancedFilters_Loaded(eventCode, addonName)
         AF.otherAddons[addonName] = true
     end
     if addonName ~= AF.name then return end
+
     EVENT_MANAGER:UnregisterForEvent(AF.name .. "_Loaded", EVENT_ADD_ON_LOADED)
     EVENT_MANAGER:RegisterForEvent(AF.name .. "_PlayerActivated", EVENT_PLAYER_ACTIVATED,   AF.checkForOtherAddonErrors)
+
     --Do not load anything further if the addon MultiCraft is enabled
     if AF.otherAddons["MultiCraft"] or MultiCraft ~= nil then
         return
@@ -1150,12 +1299,12 @@ local function AdvancedFilters_Loaded(eventCode, addonName)
     AF.bankOpened       = false
     AF.guildBankOpened  = false
     AF.houseBankOpened  = false
-    EVENT_MANAGER:RegisterForEvent(AF.name .. "_BankOpened", EVENT_OPEN_BANK,               function() SetBankEventVariable("b", true) end)
-    EVENT_MANAGER:RegisterForEvent(AF.name .. "_BankClosed", EVENT_CLOSE_BANK,              function() SetBankEventVariable("b", false) end)
-    EVENT_MANAGER:RegisterForEvent(AF.name .. "_GuildBankOpened", EVENT_OPEN_GUILD_BANK,    function() SetBankEventVariable("gb", true) end)
-    EVENT_MANAGER:RegisterForEvent(AF.name .. "_GuildBankClosed", EVENT_CLOSE_GUILD_BANK,   function() SetBankEventVariable("gb", false) end)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_BankOpened",                    EVENT_OPEN_BANK,                        function() SetBankEventVariable("b", true) end)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_BankClosed",                    EVENT_CLOSE_BANK,                       function() SetBankEventVariable("b", false) end)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_GuildBankOpened",               EVENT_OPEN_GUILD_BANK,                  function() SetBankEventVariable("gb", true) end)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_GuildBankClosed",               EVENT_CLOSE_GUILD_BANK,                 function() SetBankEventVariable("gb", false) end)
     --Bufix to reset "store"'s currentFilter as stable closes
-    EVENT_MANAGER:RegisterForEvent(AF.name .. "_StableClosed", EVENT_STABLE_INTERACT_END,   function() controlsForChecks.store.currentFilter = ITEMFILTERTYPE_ALL end)
+    EVENT_MANAGER:RegisterForEvent(AF.name .. "_StableClosed",                  EVENT_STABLE_INTERACT_END,              function() controlsForChecks.store.currentFilter = ITEMFILTERTYPE_ALL end)
 
     --Create instance of library libFilters
     util.LibFilters:InitializeLibFilters()

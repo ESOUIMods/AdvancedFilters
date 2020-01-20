@@ -63,9 +63,7 @@ function util.ThrottledUpdate(callbackName, timer, callback, ...)
         args = {...}
     end
     local function Update()
-        if AF.settings.debugSpam then
-            d("--->[AF]ThrottledUpdate, callbackName: " ..tostring(callbackName))
-        end
+        if AF.settings.debugSpam then d("--->[AF]ThrottledUpdate, callbackName: " ..tostring(callbackName)) end
         EVENT_MANAGER:UnregisterForUpdate(callbackName)
         if args then
             callback(unpack(args))
@@ -162,7 +160,6 @@ function util.GetCurrentFilter(invType)
     if invType == INVENTORY_TYPE_VENDOR_BUY then
         currentFilter = controlsForChecks.store.currentFilter
     elseif isCraftingInventoryType then
-        local craftingIn
         if isCraftingInventoryType then
             local craftingInv = subfilterBar and util.GetInventoryFromCraftingPanel(subfilterBar.inventoryType)
             if not craftingInv then return end
@@ -184,14 +181,20 @@ function util.UpdateCurrentFilter(invType, currentFilter, isCraftingInventoryTyp
     if AF.settings.debugSpam then d("[AF]util.UpdateCurrentFilter - invType: " .. tostring(invType) .. ", currentFilter: " ..tostring(currentFilter).. ", isCraftingInventoryType: " ..tostring(isCraftingInventoryType)) end
     if invType == nil or currentFilter == nil then return nil end
     isCraftingInventoryType = isCraftingInventoryType or false
-    if isCraftingInventoryType and craftingInv == nil then return false end
+    if isCraftingInventoryType and craftingInv == nil then
+        if AF.settings.debugSpam then d("<<ABORT[AF]util.UpdateCurrentFilter - is crafting but craftingInv var missing!") end
+        return false
+    end
     --set currentFilter since we need it before the original ChangeFilter updates it
     if invType == INVENTORY_TYPE_VENDOR_BUY then
         controlsForChecks.store.currentFilter = currentFilter
     elseif isCraftingInventoryType then
         craftingInv.currentFilter = currentFilter
     else
-        if not PLAYER_INVENTORY.inventories[invType] then return false end
+        if not PLAYER_INVENTORY.inventories[invType] then
+            if AF.settings.debugSpam then d("<<ABORT[AF]util.UpdateCurrentFilter - invType missing in PLAYER_INVENTORY.inventories!") end
+            return false
+        end
         PLAYER_INVENTORY.inventories[invType].currentFilter = currentFilter
     end
 end
@@ -518,7 +521,7 @@ function util.BuildDropdownCallbacks(groupName, subfilterName)
             --insert all default AdvancedFilters filters for each subfilter (see file data.lua -> table AF.subfilterCallbacks)
             for _, subfilterNameLoop in ipairs(groupNameOfKeys) do
                 local currentSubfilterTable = subfilterCallbacks[groupName][subfilterNameLoop]
-                for idx, callbackEntry in ipairs(currentSubfilterTable.dropdownCallbacks) do
+                for _, callbackEntry in ipairs(currentSubfilterTable.dropdownCallbacks) do
                     callbackEntry.isStandardAFDropdownFilter = true
                     table.insert(callbackTable, callbackEntry)
                 end
@@ -584,10 +587,9 @@ function util.DoNotUpdateInventoryItemCount(filterTypeToUse)
         [LF_SMITHING_RESEARCH_DIALOG]   = true,
         [LF_JEWELRY_RESEARCH_DIALOG]    = true,
     }
-    if doNotUpdateInventoryItemCountFilterPanels[filterTypeToUse] then
-        return true
-    end
-    return false
+    local doNotUpdateInventoryItemCountAtFilterPanel = doNotUpdateInventoryItemCountFilterPanels[filterTypeToUse] or false
+    if AF.settings.debugSpam then d("[AF]util.DoNotUpdateInventoryItemCount, filterTypeToUse: " ..tostring(filterTypeToUse) .. ", doNotUpdate: " ..tostring(doNotUpdateInventoryItemCountAtFilterPanel)) end
+    return doNotUpdateInventoryItemCountAtFilterPanel
 end
 
 --Add count of shown (filtered) items to the inventory: space/total (count)
@@ -598,7 +600,7 @@ function util.getInvItemCount(freeSlotType, isCraftingInvType)
     if freeSlotType ~= nil then
         invType = freeSlotType
     else
-        invType = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+        invType = AF.currentInventoryType
     end
     if invType == nil then return nil end
     isCraftingInvType = isCraftingInvType or util.IsCraftingStationInventoryType(invType)
@@ -610,7 +612,7 @@ function util.getInvItemCount(freeSlotType, isCraftingInvType)
         end
     else
         local craftingInvCtrl = util.GetInventoryFromCraftingPanel(freeSlotType) or nil
-        if craftingInvCtrl == nil then return nil end
+        if craftingInvCtrl == nil or craftingInvCtrl.list == nil then return nil end
         local craftingInvSlotCountCtrl = craftingInvCtrl.list.data or nil
         if craftingInvSlotCountCtrl == nil then return nil end
         itemCount = #craftingInvSlotCountCtrl
@@ -620,11 +622,11 @@ end
 
 --Update the inventory infobar lFreeSlot label with the item filtered count
 function util.updateInventoryInfoBarCountLabel(invType, isCraftingInvType, isCalledFromExternalAddon)
-    invType = invType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+    invType = invType or AF.currentInventoryType
     if util.DoNotUpdateInventoryItemCount(invType) then return end
     isCraftingInvType = isCraftingInvType or util.IsCraftingStationInventoryType(invType)
     isCalledFromExternalAddon = isCalledFromExternalAddon or false
-    --if AF.settings.debugSpam then d("[AF]util.updateInventoryInfoBarCountLabel-invType: " ..tostring(invType) .. ", isCraftingInvType: " .. tostring(isCraftingInvType) .. ", isCalledFromExternalAddon: " .. tostring(isCalledFromExternalAddon)) end
+    if AF.settings.debugSpam then d("[AF]util.updateInventoryInfoBarCountLabel-invType: " ..tostring(invType) .. ", isCraftingInvType: " .. tostring(isCraftingInvType) .. ", isCalledFromExternalAddon: " .. tostring(isCalledFromExternalAddon)) end
     --Update the count of shown/filtered items in the inventory FreeSlots label
     if invType ~= nil then
         if not isCraftingInvType then
@@ -643,7 +645,7 @@ function util.updateInventoryInfoBarCountLabel(invType, isCraftingInvType, isCal
             local infoBar = craftingInvCtrlControl:GetNamedChild("InfoBar")
             --Now call update function
             if infoBar ~= nil then
-                UpdateInventorySlots(infoBar)
+                if UpdateInventorySlots then UpdateInventorySlots(infoBar) end
             end
         end
     end
@@ -651,8 +653,7 @@ end
 
 --Update the crafting table's inventory item count etc. from external addons
 function util.UpdateCraftingInventoryFilteredCount(invType)
-    if util.DoNotUpdateInventoryItemCount(invType) then return end
-    --if AF.settings.debugSpam then d("[AF]util.UpdateCraftingInventoryFilteredCount - invType: " ..tostring(invType)) end
+    if AF.settings.debugSpam then d("[AF]util.UpdateCraftingInventoryFilteredCount - invType: " ..tostring(invType)) end
     util.updateInventoryInfoBarCountLabel(invType, nil, true)
 end
 --======================================================================================================================
@@ -799,9 +800,12 @@ end
 --======================================================================================================================
 --Should the subfilter bar not be shown?
 --e.g. ALWAYS do not show if special itemfilterType OR if the current inventory was closed again (automatic bank closing)
-function util.CheckIfNoSubfilterBarShouldBeShown(currentFilter, invType)
-    if AF.settings.debugSpam then d("[AF]util.CheckIfNoSubfilterBarShouldBeShown - invType: " ..tostring(invType)) end
+function util.CheckIfNoSubfilterBarShouldBeShown(currentFilter, invType, craftingType, filter)
+    if AF.debug or AF.settings.debugSpam then
+        d("[AF]util.CheckIfNoSubfilterBarShouldBeShown - currentFilter: " .. tostring(currentFilter) .. ", invType: " ..tostring(invType) .. ", craftingType: " ..tostring(craftingType) .. ", filter: " .. tostring(filter))
+    end
     local doAbort = false
+    local filterTypeToUse
     --Is the stable vendor shown? Abort, as there are no subfilter bars
     if currentFilter and currentFilter == ITEMFILTERTYPE_COLLECTIBLE and SCENE_MANAGER:GetCurrentScene() == STABLES_SCENE then doAbort = true end
     if not doAbort and invType ~= nil then
@@ -809,7 +813,23 @@ function util.CheckIfNoSubfilterBarShouldBeShown(currentFilter, invType)
         if AF.fragmentStateHiding and AF.fragmentStateHiding[invType] then
             doAbort = true
         end
+        --Is the subfilter bar some bad combination which the game creates but shouldn't be there as it will be updated right afterwards
+        --properly with correct values? e.g. at the jewelry refinemant panel the filter will be first 6 (why?) + currentFilter =nil and
+        --then corrected to 1 and correct currentFilter properly
+        if not doAbort then
+            if currentFilter == nil then
+                if filter == nil then return false end
+                craftingType = craftingType or util.GetCraftingType()
+                if not craftingType then return false end
+                local subfilterBarsShouldOnlyBeShownSpecial = AF.subfilterBarsShouldOnlyBeShownSpecial
+                if subfilterBarsShouldOnlyBeShownSpecial[invType] and subfilterBarsShouldOnlyBeShownSpecial[invType][craftingType] then
+                    local subfilterBarShouldOnlyBeShownSpecial = subfilterBarsShouldOnlyBeShownSpecial[invType][craftingType][filter] or false
+                    doAbort = not subfilterBarShouldOnlyBeShownSpecial
+                end
+            end
+        end
     end
+    if AF.settings.debugSpam then d("[AF]util.CheckIfNoSubfilterBarShouldBeShown - doAbort: " .. tostring(doAbort) .." /currentFilter: " ..tostring(currentFilter) .. ", invType: " ..tostring(invType) .. ", filterTypeToUse: " ..tostring(filterTypeToUse) .. ", fragmentStateHiding: " ..tostring(AF.fragmentStateHiding[invType]) .. ", isBanking: " ..tostring(PLAYER_INVENTORY:IsBanking())) end
     --if AF.settings.debugSpam then d("[AF]util.CheckIfNoSubfilterBarShouldBeShown - currentFilter: " ..tostring(currentFilter) .. ", invType: " ..tostring(invType) .. ", abort: " ..tostring(doAbort)) end
     return doAbort
 end
@@ -828,8 +848,8 @@ function util.AbortSubfilterRefresh(inventoryType)
 end
 
 --Refresh the subfilter button bar and disable non-given/non-matching subfilter buttons ("grey-out" the buttons)
-function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
-    calledFromExternalAddon = calledFromExternalAddon or ""
+function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddonName)
+    calledFromExternalAddonName = calledFromExternalAddonName or ""
     local inventoryType = subfilterBar.inventoryType
     local craftingType = util.GetCraftingType()
     local isNoCrafting = not util.IsCraftingPanelShown()
@@ -839,7 +859,7 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
     local bagWornItemCache
     if AF.settings.debugSpam then
         d(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        d("[AF]SubFilter refresh, calledFromExternalAddon: " .. tostring(calledFromExternalAddon) .. ", invType: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar.name) .. ", craftingType: " .. tostring(craftingType) .. ", isNoCrafting: " .. tostring(isNoCrafting))
+        d("[AF]SubFilter refresh, calledFromExternalAddonName: " .. tostring(calledFromExternalAddonName) .. ", invType: " .. tostring(inventoryType) .. ", subfilterBar: " ..tostring(subfilterBar.name) .. ", craftingType: " .. tostring(craftingType) .. ", isNoCrafting: " .. tostring(isNoCrafting))
     end
     --AF._currentSubfilterBarAtRefreshCheck = subfilterBar
 
@@ -904,19 +924,20 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
             local isBound = false
             local passesCallback
             local passesFilter
+            --Another addon uses filters on this LibFilters panelId?
+            local otherAddonUsesFilters = util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(itemData, realInvType, craftingType, libFiltersPanelId)
             if isNoCrafting then
                 passesCallback = button.filterCallback(itemData)
                 --Like crafting tables the junk inventory got different itemTypes in one section (ITEMFILTERTYPE_JUNK = 9). So the filter comparison does not work and the callback should be enough to check.
                 passesFilter = passesCallback and ((isJunkInvButtonActive and currentFilter == ITEMFILTERTYPE_JUNK)
                         or (util.IsItemFilterTypeInItemFilterData(itemData.filterData, currentFilter)))
-                        and util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(itemData, realInvType, craftingType, libFiltersPanelId)
+                        and otherAddonUsesFilters
             else
                 passesCallback = button.filterCallback(itemData)
                 --Todo: ItemData.filterData is not reliable at crafting stations as the items are collected from several different bags!
                 --Todo: Thus the filter is always marked as "passed". Is this correct and does it work properly? To test!
                 --> Set the currentFilter = itemData.filterData[1], which should be the itemType of the current item
                 --currentFilter = itemData.filterData[1]
-                local otherAddonUsesFilters = util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(itemData, realInvType, craftingType, libFiltersPanelId)
                 passesFilter = passesCallback and otherAddonUsesFilters
                 --Do more filter checks for the crafting types, if the filter passes until now
                 if passesFilter then
@@ -927,7 +948,7 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddon)
                             local itemLink = GetItemLink(itemData.bagId, itemData.slotIndex)
                             passesFilter = passesFilter and not IsItemLinkForcedNotDeconstructable(itemLink)
                         end
-                        --Retrait
+                    --Retrait
                     elseif craftingType == CRAFTING_TYPE_NONE then
                         if libFiltersPanelId == LF_RETRAIT and isRetraitStation then
                             passesFilter = passesFilter and CanItemBeRetraited(itemData.bagId, itemData.slotIndex)
@@ -1190,20 +1211,22 @@ end
 --Apply the LIbFilters filter to the inventory now
 function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
 
+    local currentInvType    = AF.currentInventoryType
     local LibFilters        = util.LibFilters
     local callback          = button.filterCallback
-    local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(AF.currentInventoryType, true)
+    local filterTypeToUse   = filterType or util.GetCurrentFilterTypeForInventory(currentInvType, true)
     local delay             = 0
     local buttonName        = button.name
 
-    if AF.settings.debugSpam then d("----->[AF]ApplyFilter " .. tostring(buttonName) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterTypeToUse) .. " and inventoryType " .. tostring(AF.currentInventoryType)) end
+    if AF.settings.debugSpam then d("----->[AF]ApplyFilter " .. tostring(buttonName) .. " from " .. tostring(filterTag) .. " for filterType " .. tostring(filterTypeToUse) .. " and inventoryType " .. tostring(currentInvType)) end
     --if something isn't right, abort
+    local errorSuffix = "Tag \'" .. filterTag .. "\', button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'"
     if callback == nil then
-        d("[AdvancedFilters] ERROR - ApplyFilter: Callback was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
+        d("[AdvancedFilters] ERROR - ApplyFilter: Callback at inventory \'".. tostring(currentInvType) .. "\' was nil!\n" .. errorSuffix)
         return
     end
     if filterTypeToUse == nil then
-        d("[AdvancedFilters] ERROR - ApplyFilter: FilterType was nil for \'" .. filterTag .. "\' at button \'" .. tostring(buttonName) .. "\', filterType: \'" ..tostring(filterTypeToUse) .. "\', groupName: \'" .. tostring(button.groupName) .. "\'")
+        d("[AdvancedFilters] ERROR - ApplyFilter: FilterType at inventory \'".. tostring(currentInvType) .. "\'  was nil!\n" .. errorSuffix)
         return
     end
 
@@ -1250,11 +1273,8 @@ function util.ApplyFilter(button, filterTag, requestUpdate, filterType)
         --Update the count of filtered/shown items in the inventory FreeSlot label
         --Delay this function call as the data needs to be filtered first!
         zo_callLater(function()
-            --If the inventory got a freeSlotLabel and itemCount: Update it
-            if not util.DoNotUpdateInventoryItemCount(filterTypeToUse) then
-                --Update the shown filtered item count at the inventory bottom line
-                util.UpdateCraftingInventoryFilteredCount(util.GetCurrentFilterTypeForInventory(AF.currentInventoryType))
-            end
+            --Update the shown filtered item count at the inventory bottom line, if the inventory got a label for it
+            util.UpdateCraftingInventoryFilteredCount(currentInvType)
 
             --Run an end callback function now?
             local endCallback = button.filterEndCallback
@@ -1768,7 +1788,6 @@ function util.CheckIfIsCustomAddonInventoryFilterButtonItemFilterType(invType)
     --Get the currentFilter of the inventory
     local currentFilter = util.GetCurrentFilter(invType)
     if not currentFilter then return false end
-    local isCustomInventoryFilterButtonItemFilterType = false
     for otherAddonName, customItemFilterType in pairs(customInventoryFilterButton2ItemType) do
         if customItemFilterType == currentFilter then return true end
     end
@@ -1809,11 +1828,15 @@ end
 function util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters(slotData, inventoryType, craftingType, libFiltersPanelId)
     if slotData == nil or slotData.bagId == nil or slotData.slotIndex == nil
             or inventoryType == nil or craftingType == nil or libFiltersPanelId == nil then return true end
-    if AF.settings.debugSpam then d("[AF]util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters, inventoryType: " ..tostring(inventoryType) .. ", craftingType: " .. tostring(craftingType) .. ", libFiltersPanelId: " .. tostring(libFiltersPanelId)) end
+    --if AF.settings.debugSpam then
+    --d("[AF]util.CheckIfOtherAddonsProvideSubfilterBarRefreshFilters, inventoryType: " ..tostring(inventoryType) .. ", craftingType: " .. tostring(craftingType) .. ", libFiltersPanelId: " .. tostring(libFiltersPanelId))
+    --end
     --AF.SubfiltThrottledUpdateerRefreshCallbacks contain the externally registered filters, from other addons, for the refresh of subfilterBars
     local subfilterRefreshCallbacks
     if AF.SubfilterRefreshCallbacks == nil or AF.SubfilterRefreshCallbacks[inventoryType] == nil
-            or AF.SubfilterRefreshCallbacks[inventoryType][craftingType] == nil or AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId] == nil then return true end
+            or AF.SubfilterRefreshCallbacks[inventoryType][craftingType] == nil or AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId] == nil then
+        return true
+    end
     subfilterRefreshCallbacks = AF.SubfilterRefreshCallbacks[inventoryType][craftingType][libFiltersPanelId]
     if subfilterRefreshCallbacks == nil then return true end
     local retVar = true
@@ -1830,5 +1853,3 @@ end
 --======================================================================================================================
 -- -^- API functions                                                                                               -^-
 --======================================================================================================================
-
-

@@ -1,5 +1,7 @@
-local util = AdvancedFilters.util
-local checkCraftingStationSlot = AdvancedFilters.checkCraftingStationSlot
+local AF = AdvancedFilters
+local util = AF.util
+local checkCraftingStationSlot = AF.checkCraftingStationSlot
+if util.LibMotifCategories == nil then return end
 
 local function GetFilterCallbackForCraftableMotif()
     return function(slot, slotIndex)
@@ -33,14 +35,19 @@ local styleDropdownCallbacks = {
 }
 
 local strings = {
-    ["MotifKnowledge"] = "Motif Knowledge",
-    ["CraftableMotif"] = "Craftable Motif",
-    ["KnownMotif"] = "Known Motif",
+    ["MotifKnowledge"]  = "Motif Knowledge",
+    ["CraftableMotif"]  = "Craftable Motif",
+    ["KnownMotif"]      = "Known Motif",
 }
 local stringsDE = {
-    ["MotifKnowledge"] = "Motiv Wissen",
-    ["CraftableMotif"] = "Herstellbare Motive",
-    ["KnownMotif"] = "Bekannte Motive",
+    ["MotifKnowledge"]  = "Motiv Wissen",
+    ["CraftableMotif"]  = "Herstellbare Motive",
+    ["KnownMotif"]      = "Bekannte Motive",
+}
+local stringsFR = {
+    ["MotifKnowledge"]  = "Motif Connaissance",
+    ["CraftableMotif"]  = "Motif artisanal",
+    ["KnownMotif"]      = "Motif connu",
 }
 
 local filterInformation = {
@@ -50,6 +57,7 @@ local filterInformation = {
     subfilters = {"All",},
     deStrings = stringsDE,
     enStrings = strings,
+    frStrings = stringsFR,
 }
 
 AdvancedFilters_RegisterFilter(filterInformation)

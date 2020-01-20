@@ -57,18 +57,22 @@ function AF_FilterBar:Initialize(inventoryName, tradeSkillname, groupName, subfi
     self.dropdown:SetAnchor(RIGHT, self.control, RIGHT)
     self.dropdown:SetHeight(24)
     self.dropdown:SetWidth(104)
+    --Function for the Mouse right click on the dropdown box (filter plugins) of the subfilterBar
     local function DropdownOnMouseUpHandler(dropdown, mouseButton, upInside)
         local comboBox = dropdown.m_comboBox
-
-        if mouseButton == MOUSE_BUTTON_INDEX_LEFT and upInside then
+        if not upInside then return end
+        --Left mouse button
+        if mouseButton == MOUSE_BUTTON_INDEX_LEFT then
             if comboBox.m_isDropdownVisible then
                 comboBox:HideDropdownInternal()
             else
                 comboBox:ShowDropdownInternal()
             end
-        elseif mouseButton == MOUSE_BUTTON_INDEX_RIGHT and upInside then
+        --Right mouse button
+        elseif mouseButton == MOUSE_BUTTON_INDEX_RIGHT then
             --Get the current LibFilters filterPanelId
             local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(AF.currentInventoryType)
+--d("[AF]filterPanelIdActive at filter plugin dropdown right click: " ..tostring(filterPanelIdActive))
             --Add the currently active filtername to the dropdown "Invert" entry
             local button = self:GetCurrentButton()
             if not button then return end
@@ -415,7 +419,7 @@ function AF_FilterBar:ActivateButton(newButton)
     newButton:GetNamedChild("Texture"):SetTexture(newButton.down)
     newButton:SetEnabled(false)
 
-    --refresh filter
+    --refresh filters
     util.ApplyFilter(newButton, AF_CONST_BUTTON_FILTER, true) --let the filterType be determined in the function AF.util.ApplyFilter
 
     --set new active button reference
@@ -433,20 +437,10 @@ function AF_FilterBar:ActivateButton(newButton)
     --Get the current's inventory filterType
     local filterPanelIdActive = util.GetCurrentFilterTypeForInventory(inventoryTypeOfFilterBar)
     if filterPanelIdActive == nil then
-        local showError = true
-        --Is the current inventoryType the bank and is the bank hidden?
-        if inventoryTypeOfFilterBar == INVENTORY_BANK then
-            --Is the bank already closed?
-            if not PLAYER_INVENTORY:IsBanking() then
-                showError = false
-            end
-        end
-        if showError then
-            d("===============================================")
-            d("[AdvancedFilters]AF_FilterBar:ActivateButton: " .. tostring(newButton.name))
-            d(">ERROR - filterPanelId is NIL!")
-            d("===============================================")
-        end
+        d("===============================================")
+        d("[AdvancedFilters]AF_FilterBar:ActivateButton: " .. tostring(newButton.name))
+        d(">ERROR - filterPanelId is NIL!")
+        d("===============================================")
     end
     --add new dropdown data
     PopulateDropdown(newButton)
@@ -528,10 +522,10 @@ function AF.CreateSubfilterBars()
                         subfilterBar:SetInventoryType(inventoryType)
                         subfilterGroups[inventoryType][tradeSkillType][itemFilterType] = subfilterBar
                     else
-                        if doDebugOutput or AF.settings.debugSpam then d("[AF]CreateSubfilterBars, missing names - inventoryName: " ..tostring(inventoryNames[inventoryType]) .. ", tradeSkillName: " .. tostring(tradeSkillNames[tradeSkillType]) .. ", filterTypeName:" .. tostring(filterTypeNames[itemFilterType]) .. ", subfilterButtonName:" .. tostring(subfilterButtonNames[itemFilterType])) end
+                        if doDebugOutput or AF.settings.debugSpam then d("[AF] ERROR - CreateSubfilterBars, missing names - inventoryName: " ..tostring(inventoryNames[inventoryType]) .. ", tradeSkillName: " .. tostring(tradeSkillNames[tradeSkillType]) .. ", filterTypeName: " .. tostring(filterTypeNames[itemFilterType]) .. ", subfilterButtonName: " .. tostring(subfilterButtonNames[itemFilterType])) end
                     end
                 else
-                    if doDebugOutput or AF.settings.debugSpam then d("[AF]CreateSubfilterBars, missing data - inventoryType: " ..tostring(inventoryType) .. ", tradeSkillType: " .. tostring(tradeSkillType) .. ", itemFilterType:" .. tostring(itemFilterType)) end
+                    if doDebugOutput or AF.settings.debugSpam then d("[AF] ERROR - CreateSubfilterBars, missing data - inventoryType: " ..tostring(inventoryType) .. ", tradeSkillType: " .. tostring(tradeSkillType) .. ", itemFilterType: " .. tostring(itemFilterType)) end
                 end
             end
         end

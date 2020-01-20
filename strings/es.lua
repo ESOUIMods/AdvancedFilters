@@ -1,5 +1,9 @@
 local util = AdvancedFilters.util
 local enStrings = AdvancedFilters.ENstrings
+
+local afPrefixNormal    = enStrings.AFPREFIXNORMAL
+local afPrefixError     = string.format(enStrings.AFPREFIX, " ERROR")
+
 local strings = {
      --WEAPON
     OneHand = "Una Mano",

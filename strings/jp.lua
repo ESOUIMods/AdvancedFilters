@@ -1,5 +1,9 @@
 local util = AdvancedFilters.util
 local enStrings = AdvancedFilters.ENstrings
+
+local afPrefixNormal    = enStrings.AFPREFIXNORMAL
+local afPrefixError     = string.format(enStrings.AFPREFIX, " エラー")
+
 local strings = {
     --WEAPON
     OneHand = "片手武器",
@@ -45,7 +49,7 @@ local strings = {
     InvertDropdownFilter = "フィルターを反転: %s",
 
     --Error messages
-    errorCheckChatPlease = "|cFF0000[AdvancedFilters エラー]|r チャットエラーメッセージをお読みください!",
+    errorCheckChatPlease = afPrefixError .. " チャットエラーメッセージをお読みください!",
 }
 setmetatable(strings, {__index = enStrings})
 AdvancedFilters.strings = strings

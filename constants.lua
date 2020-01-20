@@ -3,8 +3,8 @@ local AF = AdvancedFilters
 
 --Addon base variables
 AF.name = "AdvancedFilters"
-AF.author = "ingeniousclown, Randactyl, Baertram"
-AF.version = "1.5.2.7"
+AF.author = "ingeniousclown, Randactyl, Baertram (current)"
+AF.version = "1.5.3.4"
 AF.savedVarsVersion = 1.511
 AF.website = "http://www.esoui.com/downloads/info245-AdvancedFilters.html"
 AF.feedback = "https://www.esoui.com/portal.php?id=136&a=faq"
@@ -33,26 +33,8 @@ AF.defaultSettings = {
 --Libraries
 AF.util = AF.util or {}
 local util = AF.util
-------------------------------------------------------------------------------------------------------------------------
--- Libraries - BEGIN
-------------------------------------------------------------------------------------------------------------------------
---LibCommonInventoryFilters
-util.libCIF = LibCIF
-------------------------------------------------------------------------------------------------------------------------
---LibFilters-3.0
-util.LibFilters = LibFilters3
-if not util.LibFilters then d("[AdvancedFilters]ERROR: Needed library LibFilters-3.0 is not loaded. This addon will not work properly!") return end
---LibAddonMenu-2.0
-AF.LAM = LibAddonMenu2
-if AF.LAM == nil and LibStub then AF.LAM = LibStub('LibAddonMenu-2.0', true) end
-------------------------------------------------------------------------------------------------------------------------
---LibMotifCategories-1.0
-util.LibMotifCategories = LibMotifCategories
-if not util.LibMotifCategories and LibStub then util.LibMotifCategories = LibStub("LibMotifCategories-1.0", true) end
-if not util.LibMotifCategories then d("[AdvancedFilters]ERROR: Needed library LibMotifCategories-1.0 is not loaded. This addon will not work properly!") return end
-------------------------------------------------------------------------------------------------------------------------
--- Libraries - END
----------------------------------------------------------------------------------------------------------------------------
+
+--Libraries: See file libraries.lua
 
 --Constant for the "All" subfilters
 AF_CONST_ALL                = 'All'
@@ -60,12 +42,14 @@ AF_CONST_ALL                = 'All'
 AF_CONST_BUTTON_FILTER      = "AF_ButtonFilter"
 AF_CONST_DROPDOWN_FILTER    = "AF_DropdownFilter"
 
+--Last known currentFilter
+AF.lastCurrentFilter = {}
+
 --Other addons
 AF.otherAddons = {}
 
---Error strings for thrown addon errors and chat output
-AF.errorStrings = {}
-AF.errorStrings["MultiCraft"] = "PLEASE DISABLE THE ADDON \'MultiCraft\'! AdvancedFilters cannot work if this addon is enabled. \'Multicraft\' has been replaced by ZOs own multi crafting UI so you do not need it anymore!"
+--Preventer veriables
+AF.preventerVars = {}
 
 --SCENE CHECKS
 --Scene names for the SCENE_MANAGER.currentScene.name check
@@ -86,6 +70,14 @@ local sceneNameGuildBankDeposit = ""
 AF.fragmentStateHiding = {}
 
 --CONTROLS
+--Bank inventory types
+local bankInvTypes = {
+    [INVENTORY_BANK]        = true,
+    [INVENTORY_GUILD_BANK]  = true,
+    [INVENTORY_HOUSE_BANK]  = true,
+}
+AF.bankInvTypes = bankInvTypes
+
 --Control names for the "which panel is shown" checks
 local controlsForChecks = {
     inv                     = ZO_PlayerInventory,
@@ -102,7 +94,9 @@ local controlsForChecks = {
     guildStoreSellBackpack  = ZO_PlayerInventory,
     --Keyboard variables
     store                   = STORE_WINDOW,
+    smithingBaseVar         = ZO_Smithing,
     smithing                = SMITHING,
+    enchantingBaseVar       = ZO_Enchanting,
     enchanting              = ENCHANTING,
     retrait                 = ZO_RETRAIT_STATION_KEYBOARD, -- needed for the other retrait related filter stuff (hooks, util functions)
     fence                   = FENCE_KEYBOARD,
@@ -199,7 +193,7 @@ AF.maxItemFilterType = counter
 counter = AF.maxItemFilterType
 counter = counter + 1
 --Harven's Stolen Filter
-ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER = counter
+ITEMFILTERTYPE_AF_STOLENFILTER = counter
 AF.maxItemFilterType = counter
 
 --NAME STRINGS (for the LibFilters filterTags)
@@ -246,6 +240,7 @@ local filterTypeNames = {
     [ITEMFILTERTYPE_ALL]                            = AF_CONST_ALL,
     [ITEMFILTERTYPE_WEAPONS]                        = "Weapons",
     [ITEMFILTERTYPE_ARMOR]                          = "Armor",
+    [ITEMFILTERTYPE_COLLECTIBLE]                    = "Collectibles",
     [ITEMFILTERTYPE_CONSUMABLE]                     = "Consumables",
     [ITEMFILTERTYPE_CRAFTING]                       = "Crafting",
     [ITEMFILTERTYPE_MISCELLANEOUS]                  = "Miscellaneous",
@@ -284,7 +279,7 @@ local filterTypeNames = {
     [ITEMFILTERTYPE_AF_RETRAIT_JEWELRY]             = "JewelryRetrait",
     --CUSTOM ADDON TABs
     --[[
-    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER]         = "HarvensStolenFilter",
+    [ITEMFILTERTYPE_AF_STOLENFILTER]         = "HarvensStolenFilter",
     ]]
 }
 AF.filterTypeNames = filterTypeNames
@@ -332,18 +327,56 @@ AF.listControlForSubfilterBarReanchor = listControlForSubfilterBarReanchor
 
 --There are no subfilter bars active at the following inventory panels. Used for debug messages!
 local subFiltersBarInactive = {
-    [ITEMFILTERTYPE_QUEST]                  = INVENTORY_QUEST_ITEM,  -- Inventory: Quest items
+    [ITEMFILTERTYPE_QUEST]           = INVENTORY_QUEST_ITEM,  -- Inventory: Quest items
     --Custom addons
-    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = INVENTORY_BACKPACK,
+    [ITEMFILTERTYPE_AF_STOLENFILTER] = INVENTORY_BACKPACK,
 }
 AF.subFiltersBarInactive = subFiltersBarInactive
+
+--These panels are currently not supported
+local notSupportedPanels = {
+    [CRAFTING_TYPE_ENCHANTING] = {
+        [ENCHANTING_MODE_RECIPES]   = true,
+        [ENCHANTING_MODE_NONE]      = true,
+    },
+}
+AF.notSupportedPanels = notSupportedPanels
+
+--Some special constellations where the subfilterbar should not be shown
+local subfilterBarsShouldOnlyBeShownSpecial = {
+    --Smithing refine
+    [LF_SMITHING_REFINE] = {
+        [CRAFTING_TYPE_BLACKSMITHING] = {
+            [SMITHING_FILTER_TYPE_RAW_MATERIALS] = true,
+        },
+        [CRAFTING_TYPE_CLOTHIER] = {
+            [SMITHING_FILTER_TYPE_RAW_MATERIALS] = true,
+        },
+        [CRAFTING_TYPE_WOODWORKING] = {
+            [SMITHING_FILTER_TYPE_RAW_MATERIALS] = true,
+        },
+    },
+    --Jewelry refine
+    [LF_JEWELRY_REFINE] = {
+        [CRAFTING_TYPE_JEWELRYCRAFTING] = {
+            [SMITHING_FILTER_TYPE_RAW_MATERIALS] = true,
+        }
+    }
+}
+AF.subfilterBarsShouldOnlyBeShownSpecial = subfilterBarsShouldOnlyBeShownSpecial
+
+--Inventory types which should not be updated via function ChangeFilter in PLAYER_INVENTORY
+local doNotUpdateInventoriesWithInventoryChangeFilterFunction = {
+    [INVENTORY_TYPE_VENDOR_BUY] = true,
+}
+AF.doNotUpdateInventoriesWithInventoryChangeFilterFunction = doNotUpdateInventoriesWithInventoryChangeFilterFunction
 
 --Abort the subfilter bar refresh for the following inventory types
 local abortSubFilterRefreshInventoryTypes = {
     [INVENTORY_TYPE_VENDOR_BUY]             = true, --Vendor buy
     [INVENTORY_QUEST_ITEM]                  = true, --Quest items
     --Custom addons
-    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = true,
+    [ITEMFILTERTYPE_AF_STOLENFILTER] = true,
 }
 AF.abortSubFilterRefreshInventoryTypes = abortSubFilterRefreshInventoryTypes
 
@@ -366,7 +399,7 @@ local subfilterGroups = {
 
             --CUSTOM ADDON TABs
             --[[
-            [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = {},
+            [ITEMFILTERTYPE_AF_STOLENFILTER] = {},
             ]]
         },
     },
@@ -414,7 +447,7 @@ local subfilterGroups = {
             [ITEMFILTERTYPE_TRAIT_ITEMS] = {},
         },
     },
-    --Vendor buy
+    --Vendor buy -- no standard ZOs inventory type! Self defined in AdvancedFilters with value 900
     [INVENTORY_TYPE_VENDOR_BUY] = {
         [CRAFTING_TYPE_INVALID] = {
             [ITEMFILTERTYPE_ALL] = {},
@@ -423,6 +456,8 @@ local subfilterGroups = {
             [ITEMFILTERTYPE_CONSUMABLE] = {},
             [ITEMFILTERTYPE_CRAFTING] = {},
             [ITEMFILTERTYPE_MISCELLANEOUS] = {},
+            [ITEMFILTERTYPE_COLLECTIBLE] = {},
+            [ITEMFILTERTYPE_JEWELRY] = {},
         },
     },
 
@@ -689,6 +724,9 @@ local subfilterButtonNames = {
     [ITEMFILTERTYPE_AF_GLYPHS_ENCHANTING] = {
         "WeaponGlyph", "ArmorGlyph", "JewelryGlyph", AF_CONST_ALL,
     },
+    [ITEMFILTERTYPE_COLLECTIBLE] = {
+        AF_CONST_ALL,
+    },
     [ITEMFILTERTYPE_CONSUMABLE] = {
         "Trophy", "Repair", "Container", "Writ", "Motif", "Poison",
         "Potion", "Recipe", "Drink", "Food", "Crown", AF_CONST_ALL,
@@ -758,7 +796,7 @@ local subfilterButtonNames = {
 
     --CUSTOM ADDON TABs
     --[[
-    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = {
+    [ITEMFILTERTYPE_AF_STOLENFILTER] = {
         AF_CONST_ALL,
     }
     ]]
@@ -996,6 +1034,9 @@ local mapInvTypeToInvTypeBefore = {
     --Improvement
     [LF_SMITHING_IMPROVEMENT]   = LF_JEWELRY_IMPROVEMENT,
     [LF_JEWELRY_IMPROVEMENT]    = LF_SMITHING_IMPROVEMENT,
+    --Research
+    [LF_SMITHING_RESEARCH]      = LF_JEWELRY_RESEARCH,
+    [LF_JEWELRY_RESEARCH]       = LF_SMITHING_RESEARCH,
 }
 AF.mapInvTypeToInvTypeBefore = mapInvTypeToInvTypeBefore
 
@@ -1339,13 +1380,14 @@ AF.mapCSFT2IFT = craftingTableESOFilterType2AFFilterType
 --OTHER ADDONS
 --Mapping for other addons like Harven's Stolen Filters
 local customInventoryFilterButton2ItemType = {
-    ["HarvensStolenFilter"] = ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER,
+    ["HarvensStolenFilter"] = ITEMFILTERTYPE_AF_STOLENFILTER,
+    ["NTakLootSteal"]       = ITEMFILTERTYPE_AF_STOLENFILTER,
 }
 AF.customInventoryFilterButton2ItemType = customInventoryFilterButton2ItemType
 
 --Map the custom addon itemFilterTypes to a LibFilters filterPanelId.
 local customAddonItemFilterType2LibFiltersPanelId = {
-    [ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER] = LF_INVENTORY,
+    [ITEMFILTERTYPE_AF_STOLENFILTER] = LF_INVENTORY,
 }
 AF.customAddonItemFilterType2LibFiltersPanelId = customAddonItemFilterType2LibFiltersPanelId
 

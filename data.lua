@@ -458,7 +458,7 @@ end
 -- Subfilter callback setup table
 ---------------------------------------------------------------------------------------------------------------------------
 AF.subfilterCallbacks = {
-    All = {
+    [AF_CONST_ALL] = {
         addonDropdownCallbacks = {},
         dropdownCallbacks = {
             {name = AF_CONST_ALL,
@@ -466,7 +466,7 @@ AF.subfilterCallbacks = {
              filterCallback = GetFilterCallback(nil),
             },
         },
-        All = {
+        [AF_CONST_ALL] = {
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(true, nil) end,
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
@@ -474,7 +474,7 @@ AF.subfilterCallbacks = {
     },
     Weapons = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -514,7 +514,7 @@ AF.subfilterCallbacks = {
     },
     WeaponsSmithing = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(true, nil) end,
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
@@ -547,7 +547,7 @@ AF.subfilterCallbacks = {
     },
     WeaponsWoodworking = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(true, nil) end,
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
@@ -587,7 +587,7 @@ AF.subfilterCallbacks = {
     },
     Armor = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -636,7 +636,7 @@ AF.subfilterCallbacks = {
     },
     ArmorSmithing = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(true, nil) end,
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
@@ -660,7 +660,7 @@ AF.subfilterCallbacks = {
     },
     ArmorClothier = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(true, nil) end,
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
@@ -700,7 +700,7 @@ AF.subfilterCallbacks = {
     },
     ArmorWoodworking = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(true, nil) end,
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
@@ -718,7 +718,7 @@ AF.subfilterCallbacks = {
     },
     Jewelry = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterStartCallback = function() util.CheckForResearchPanelAndRunFilterFunction(true, nil) end,
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
@@ -766,7 +766,7 @@ AF.subfilterCallbacks = {
     },
     Consumables = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -822,7 +822,7 @@ AF.subfilterCallbacks = {
     },
     Crafting = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -922,7 +922,7 @@ AF.subfilterCallbacks = {
     },
     Furnishings = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -949,7 +949,7 @@ AF.subfilterCallbacks = {
     },
     Miscellaneous = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1007,7 +1007,7 @@ AF.subfilterCallbacks = {
     },
     Junk = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil, true),
             dropdownCallbacks = {},
         },
@@ -1116,7 +1116,7 @@ AF.subfilterCallbacks = {
     },
     Blacksmithing = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1139,7 +1139,7 @@ AF.subfilterCallbacks = {
     },
     Clothing = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1162,7 +1162,7 @@ AF.subfilterCallbacks = {
     },
     Woodworking = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1185,7 +1185,7 @@ AF.subfilterCallbacks = {
     },
     Alchemy = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1208,7 +1208,7 @@ AF.subfilterCallbacks = {
     },
     Enchanting = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1231,14 +1231,14 @@ AF.subfilterCallbacks = {
     },
     Runes = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
     },
     Glyphs = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1257,7 +1257,7 @@ AF.subfilterCallbacks = {
     },
     Provisioning = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1288,7 +1288,7 @@ AF.subfilterCallbacks = {
     },
     Style = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1315,7 +1315,7 @@ AF.subfilterCallbacks = {
     },
     Traits = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1337,7 +1337,7 @@ AF.subfilterCallbacks = {
     },
     JewelryCrafting = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1364,7 +1364,7 @@ AF.subfilterCallbacks = {
     },
     RefineJewelryCraftingStation = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1383,7 +1383,7 @@ AF.subfilterCallbacks = {
     },
     RefineSmithing = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1394,7 +1394,7 @@ AF.subfilterCallbacks = {
     },
     RefineClothier = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1405,7 +1405,7 @@ AF.subfilterCallbacks = {
     },
     RefineWoodworking = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1416,7 +1416,7 @@ AF.subfilterCallbacks = {
     },
     WeaponsRetrait = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1456,7 +1456,7 @@ AF.subfilterCallbacks = {
     },
     ArmorRetrait = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1481,7 +1481,7 @@ AF.subfilterCallbacks = {
     },
     JewelryRetrait = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1518,10 +1518,17 @@ AF.subfilterCallbacks = {
             },
         },
     },
+    Collectibles = {
+        addonDropdownCallbacks = {},
+        [AF_CONST_ALL]         = {
+            filterCallback    = GetFilterCallback(nil),
+            dropdownCallbacks = {},
+        },
+    },
     --[[
     CreateArmorSmithing = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1531,7 +1538,7 @@ AF.subfilterCallbacks = {
     },
     CreateWeaponsSmithing = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1555,7 +1562,7 @@ AF.subfilterCallbacks = {
     },
     CreateArmorClothier = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1568,7 +1575,7 @@ AF.subfilterCallbacks = {
     },
     CreateWeaponsWoodworking = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1591,7 +1598,7 @@ AF.subfilterCallbacks = {
     },
     CreateArmorWoodworking = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1602,7 +1609,7 @@ AF.subfilterCallbacks = {
     },
     CreateJewelryCraftingStation = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback = GetFilterCallback(nil),
             dropdownCallbacks = {},
         },
@@ -1646,7 +1653,7 @@ AF.subfilterCallbacks = {
     --[[
     HarvensStolenFilter = {
         addonDropdownCallbacks = {},
-        All = {
+        [AF_CONST_ALL] = {
             filterCallback     = GetFilterCallbackForOtherAddon(ITEMFILTERTYPE_AF_HARVENSSTOLENFILTER, false),
             dropdownCallbacks   = {},
         },

@@ -1,5 +1,9 @@
 local util = AdvancedFilters.util
 local enStrings = AdvancedFilters.ENstrings
+
+local afPrefixNormal    = enStrings.AFPREFIXNORMAL
+local afPrefixError     = string.format(enStrings.AFPREFIX, " ERREUR")
+
 local strings = {
     --WEAPON
     OneHand = "Une main",
@@ -39,7 +43,8 @@ local strings = {
     lamDebugOutput = "Déboguage",
 
     --Error messages
-    errorCheckChatPlease = "|cFF0000[AdvancedFilters ERREUR]|r Veuillez lire le message d'erreur du chat!",
+    errorCheckChatPlease    = afPrefixError .. " Veuillez lire le message d'erreur du chat!",
+    errorLibrayMissing      = afPrefixError .. " La bibliothèque requise \'%s\' n'est pas chargée. Cet addon ne fonctionnera pas correctement!",
 }
 
 setmetatable(strings, {__index = enStrings})

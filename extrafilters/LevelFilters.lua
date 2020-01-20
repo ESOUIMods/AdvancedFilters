@@ -1,6 +1,6 @@
-local util = AdvancedFilters.util
-local checkCraftingStationSlot = AdvancedFilters.checkCraftingStationSlot
-
+local AF = AdvancedFilters
+local util = AF.util
+local checkCraftingStationSlot = AF.checkCraftingStationSlot
 local cpIcon = zo_iconFormat("/esoui/art/menubar/gamepad/gp_playermenu_icon_champion.dds", 18, 18)
 
 --[[----------------------------------------------------------------------------
@@ -20,11 +20,9 @@ local function GetFilterCallbackForLevel(minLevel, maxLevel)
         local itemLink = util.GetItemLink(slot)
         local level = GetItemLinkRequiredLevel(itemLink)
         local cp = GetItemLinkRequiredChampionPoints(itemLink)
-
         if cp > 0 then
             level = level + cp
         end
-
         return false or ((level >= minLevel) and (level <= maxLevel))
     end
 end
@@ -35,19 +33,21 @@ end
     The string value for name is the relevant key for the language table.
 --]]----------------------------------------------------------------------------
 local fullLevelDropdownCallbacks = {
-    [1] = {name = "1-10", filterCallback = GetFilterCallbackForLevel(1, 10)},
-    [2] = {name = "11-20", filterCallback = GetFilterCallbackForLevel(11, 20)},
-    [3] = {name = "21-30", filterCallback = GetFilterCallbackForLevel(21, 30)},
-    [4] = {name = "31-40", filterCallback = GetFilterCallbackForLevel(31, 40)},
-    [5] = {name = "41-50", filterCallback = GetFilterCallbackForLevel(41, 50)},
-    [6] = {name = "cp10-20", filterCallback = GetFilterCallbackForLevel(60, 70)},
-    [7] = {name = "cp30-40", filterCallback = GetFilterCallbackForLevel(80, 90)},
-    [8] = {name = "cp50-60", filterCallback = GetFilterCallbackForLevel(100, 110)},
-    [9] = {name = "cp70-80", filterCallback = GetFilterCallbackForLevel(120, 130)},
-    [10] = {name = "cp90-100", filterCallback = GetFilterCallbackForLevel(140, 150)},
-    [11] = {name = "cp110-120", filterCallback = GetFilterCallbackForLevel(160, 170)},
-    [12] = {name = "cp130-140", filterCallback = GetFilterCallbackForLevel(180, 190)},
-    [13] = {name = "cp150-160", filterCallback = GetFilterCallbackForLevel(200, 210)},
+    {name = "1-10", filterCallback = GetFilterCallbackForLevel(1, 10)},
+    {name = "11-20", filterCallback = GetFilterCallbackForLevel(11, 20)},
+    {name = "21-30", filterCallback = GetFilterCallbackForLevel(21, 30)},
+    {name = "31-40", filterCallback = GetFilterCallbackForLevel(31, 40)},
+    {name = "41-50", filterCallback = GetFilterCallbackForLevel(41, 50)},
+    {name = "1-49",  filterCallback = GetFilterCallbackForLevel(1, 49)},
+    {name = "cp10-20", filterCallback = GetFilterCallbackForLevel(60, 70)},
+    {name = "cp30-40", filterCallback = GetFilterCallbackForLevel(80, 90)},
+    {name = "cp50-60", filterCallback = GetFilterCallbackForLevel(100, 110)},
+    {name = "cp70-80", filterCallback = GetFilterCallbackForLevel(120, 130)},
+    {name = "cp90-100", filterCallback = GetFilterCallbackForLevel(140, 150)},
+    {name = "cp110-120", filterCallback = GetFilterCallbackForLevel(160, 170)},
+    {name = "cp130-140", filterCallback = GetFilterCallbackForLevel(180, 190)},
+    {name = "cp150-160", filterCallback = GetFilterCallbackForLevel(200, 210)},
+    {name = "cp10-160", filterCallback = GetFilterCallbackForLevel(60, 210)},
 }
 
 --[[----------------------------------------------------------------------------
@@ -66,6 +66,7 @@ local strings = {
     ["21-30"] = "21-30",
     ["31-40"] = "31-40",
     ["41-50"] = "41-50",
+    ["1-49"]  = "1-49",
     ["cp10-20"] = cpIcon .. "10-20",
     ["cp30-40"] = cpIcon .. "30-40",
     ["cp50-60"] = cpIcon .. "50-60",
@@ -74,6 +75,7 @@ local strings = {
     ["cp110-120"] = cpIcon .. "110-120",
     ["cp130-140"] = cpIcon .. "130-140",
     ["cp150-160"] = cpIcon .. "150-160",
+    ["cp10-160"] = cpIcon .. "10-160",
 }
 local stringsDE = {
     --Remember to provide a string for your submenu if using one (see below).

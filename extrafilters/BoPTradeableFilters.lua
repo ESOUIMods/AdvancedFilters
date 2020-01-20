@@ -1,5 +1,6 @@
-local util = AdvancedFilters.util
-local checkCraftingStationSlot = AdvancedFilters.checkCraftingStationSlot
+local AF = AdvancedFilters
+local util = AF.util
+local checkCraftingStationSlot = AF.checkCraftingStationSlot
 local function BoPCallback(slot, slotIndex)
     slot = checkCraftingStationSlot(slot, slotIndex)
     local bagId, slotIndex = slot.bagId, slot.slotIndex

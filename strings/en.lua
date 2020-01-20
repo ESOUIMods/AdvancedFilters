@@ -1,4 +1,9 @@
 local util = AdvancedFilters.util
+
+local afPrefix = "|cFF0000[AdvancedFilters%s]|r"
+local afPrefixNormal    = string.format(afPrefix, "")
+local afPrefixError     = string.format(afPrefix, " ERROR")
+
 local strings = {
     --SHARED
     All = util.Localize(SI_ITEMFILTERTYPE0),
@@ -134,14 +139,6 @@ local strings = {
     ResetToAll = "Reset to \'All\'",
     InvertDropdownFilter = "Invert filter: %s",
 
-    --LibMotifCategories
-    NormalStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_NORMAL),
-    RareStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_RARE),
-    AllianceStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_ALLIANCE),
-    ExoticStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_EXOTIC),
-    DroppedStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_DROPPED),
-    CrownStyle = AdvancedFilters.util.LibMotifCategories:GetLocalizedCategoryName(LMC_MOTIF_CATEGORY_CROWN),
-
     --CRAFT BAG
     --BLACKSMITHING
     RawMaterialSmithing = util.Localize(SI_ITEMTYPE17),
@@ -193,10 +190,19 @@ local strings = {
     lamRememberFilterDropdownsLastSelection = "Remember last filter dropdown selection",
     lamRememberFilterDropdownsLastSelectionTT = "Remenber the last filter dropdown box at each subfilter and filterpanel (inventory, mail, crafting table, ...) and re-apply this filter in the dropdown entry if you return to this filterpanel and subfilter.\nThis will NOT be saved if you logout/do a reload of the UI!",
     lamDebugOutput = "Debug",
+    lamDebugSpamOutput = "Debug Spam",
 
     --Error messages
-    errorCheckChatPlease = "|cFF0000[AdvancedFilters ERROR]|r Please read the chat error message!",
+    errorCheckChatPlease    = afPrefixError .. " Please read the chat error message!",
+    errorLibrayMissing      = afPrefixError .. " Needed library \'%s\' is not loaded. This addon will not work properly!",
+    errorWhatToDo1          = "!> Please answer the following 4 questions and send the answers (and if given: the variables shown in the lines, starting with ->, after the questions) to the addon's comments of AdvancedFilters @www.esoui.com:\nhttps://bit.ly/2lSbb2A",
+    errorWhatToDo2          = "1) What did you do?\n2)Where did you do it?\n3)Did you test if the error happenes with only the addon AdvancedFilters and librraies activated (please test this!)?\n4)If error happens with other addons active: Which other addons were you using as the error happened, and are you able to say which of these causes the error?",
+
+    --Errors because of other addons
+    errorOtherAddonsMulticraft = afPrefixError .. "Other addon breaks \'" .. afPrefixNormal .. "\' -> PLEASE DISABLE THIS ADDON: \'MultiCraft\'!",
+    errorOtherAddonsMulticraftLong = "PLEASE DISABLE THE ADDON \'MultiCraft\'! " .. afPrefixNormal .. " cannot work if this addon is enabled. \'Multicraft\' has been replaced by ZOs own multi crafting UI so you do not need it anymore!"
 }
+
 strings.Vanity = strings.Disguise
 
 local light = " (" .. util.Localize(SI_ARMORTYPE1) .. ")"
@@ -240,5 +246,11 @@ strings.Swift_Neck = strings.Swift .. neckStr
 strings.Triune_Neck = strings.Triune .. neckStr
 strings.Protective_Neck = strings.Protective .. neckStr
 
+--AdvancedFilters Prefix
+strings.AFPREFIX        = afPrefix
+strings.AFPREFIXNORMAL  = afPrefixNormal
+strings.AFPREFIXERROR   = afPrefixError
+
+--Provide the EN texts globally and update the texts for the usage of the addon
 AdvancedFilters.ENstrings = strings
 AdvancedFilters.strings = strings

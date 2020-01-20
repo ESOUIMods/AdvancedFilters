@@ -113,6 +113,11 @@ function AF.LAMSettingsMenu()
             --                              DEBUG
             --==============================================================================
             {
+                type = "description",
+                name = strings.lamDebugOutput,
+
+            },
+            {
                 type = "checkbox",
                 name = strings.lamDebugOutput,
                 tooltip = strings.lamDebugOutput,
@@ -124,6 +129,23 @@ function AF.LAMSettingsMenu()
             },
 
         } -- END OF OPTIONS TABLE
+        --For debugging
+        if GetDisplayName() == "@Baertram" then
+            --Enable short global variable for AdvancedFilters
+            local cbDebugSpam =             {
+                type = "checkbox",
+                name = strings.lamDebugSpamOutput,
+                tooltip = strings.lamDebugSpamOutput,
+                getFunc = function() return settings.debugSpam end,
+                setFunc = function(value)
+                    AF.settings.debugSpam = value
+                end,
+                default = defSettings.debugSpam,
+            }
+            table.insert(optionsTable, cbDebugSpam)
+        end
+
+
         --CALLBACK_MANAGER:RegisterCallback("LAM-PanelControlsCreated", AFLAMPanelCreated)
         AF.LAM:RegisterOptionControls(AF.name .. "_LAM", optionsTable)
     end

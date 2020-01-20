@@ -1,6 +1,8 @@
-local util = AdvancedFilters.util
-local checkCraftingStationSlot = AdvancedFilters.checkCraftingStationSlot
+local AF = AdvancedFilters
+local util = AF.util
+local checkCraftingStationSlot = AF.checkCraftingStationSlot
 local lib = util.LibMotifCategories
+if lib == nil then return end
 
 local function GetFilterCallbackForMotifCategory(motifCategory)
     return function(slot, slotIndex)

@@ -1,5 +1,9 @@
 local util = AdvancedFilters.util
 local enStrings = AdvancedFilters.ENstrings
+
+local afPrefixNormal    = enStrings.AFPREFIXNORMAL
+local afPrefixError     = string.format(enStrings.AFPREFIX, " ОШИБКА")
+
 local strings = {
     --SHARED
     All = "Все",
@@ -56,7 +60,7 @@ local strings = {
     lamHideSubFilterLabelTT = "Скрыть метку описания подфильтра в верхней строке инвентаря (слева от кнопок подфильтров).",
 
     --Error messages
-    errorCheckChatPlease = "|cFF0000[AdvancedFilters ОШИБКА]|r Пожалуйста, прочитайте сообщение об ошибке чата!",
+    errorCheckChatPlease = afPrefixError .. " Пожалуйста, прочитайте сообщение об ошибке чата!",
 }
 setmetatable(strings, {__index = enStrings})
 
