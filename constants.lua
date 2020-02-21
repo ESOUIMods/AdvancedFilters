@@ -458,6 +458,7 @@ local subfilterGroups = {
             [ITEMFILTERTYPE_MISCELLANEOUS] = {},
             [ITEMFILTERTYPE_COLLECTIBLE] = {},
             [ITEMFILTERTYPE_JEWELRY] = {},
+            [ITEMFILTERTYPE_FURNISHING] ={},
         },
     },
 
