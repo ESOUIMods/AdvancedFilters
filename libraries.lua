@@ -21,6 +21,7 @@ function AF.loadLibraries(calledFromEventPlayerActivated)
     if not util.LibFilters and calledFromEventPlayerActivated then d(string.format(libMissingString, "LibFilters-3.0")) return end
     --LibAddonMenu-2.0
     AF.LAM = LibAddonMenu2
+    if AF.LAM == nil and LibStub then AF.LAM = LibStub('LibAddonMenu-2.0', true) end
     if not AF.LAM and calledFromEventPlayerActivated then d(string.format(libMissingString, "LibAddonMenu-2.0")) return end
     ------------------------------------------------------------------------------------------------------------------------
     --LibMotifCategories
