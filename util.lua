@@ -976,20 +976,21 @@ function util.RefreshSubfilterBar(subfilterBar, calledFromExternalAddonName)
                 end
                 --Check if the item can be sold
                 if isVendorPanel or isFencePanel then
-                    local itemSellInformation = GetItemLinkSellInformation(GetItemLink(itemData.bagId, itemData.slotIndex))
+                    isItemSellable = true
                     --[[
-                    ItemSellInformation
-                            * ITEM_SELL_INFORMATION_CANNOT_SELL = 4
-                            * ITEM_SELL_INFORMATION_CAN_BE_RESEARCHED = 3
-                            * ITEM_SELL_INFORMATION_INTRICATE = 2
-                            * ITEM_SELL_INFORMATION_PRIORITY_SELL = 1
-                            * ITEM_SELL_INFORMATION_NONE = 0
+                        local itemSellInformation = GetItemLinkSellInformation(GetItemLink(itemData.bagId, itemData.slotIndex))
+                        --ItemSellInformation
+                        --        * ITEM_SELL_INFORMATION_CANNOT_SELL = 4
+                        --        * ITEM_SELL_INFORMATION_CAN_BE_RESEARCHED = 3
+                        --        * ITEM_SELL_INFORMATION_INTRICATE = 2
+                        --        * ITEM_SELL_INFORMATION_PRIORITY_SELL = 1
+                        --        * ITEM_SELL_INFORMATION_NONE = 0
+                        if itemSellInformation == ITEM_SELL_INFORMATION_CANNOT_SELL then
+                            isItemSellable = false
+                        else
+                            isItemSellable = true
+                        end
                     ]]
-                    if itemSellInformation == ITEM_SELL_INFORMATION_CANNOT_SELL then
-                        isItemSellable = false
-                    else
-                        isItemSellable = true
-                    end
                 end
                 --Check if item is stolen (crafting or banks)
                 if isABankDepositPanel or isVendorPanel or not isNoCrafting or isGuildStoreSellPanel or isFencePanel or isLaunderPanel then

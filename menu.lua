@@ -2,7 +2,6 @@ AdvancedFilters = AdvancedFilters or {}
 local AF = AdvancedFilters
 
 function AF.LAMSettingsMenu()
-    --Library LibStub was loaded and library LibAddonMenu exists?
     --Create the settings panel object of libAddonMenu 2.0
     if AF.LAM == nil then return end
 
