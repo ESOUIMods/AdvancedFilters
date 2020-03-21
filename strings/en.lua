@@ -14,6 +14,14 @@ local strings = {
     MuseumPiece = util.Localize(SI_SPECIALIZEDITEMTYPE103),
     RecipeFragment = util.Localize(SI_SPECIALIZEDITEMTYPE104),
     Scroll = util.Localize(SI_SPECIALIZEDITEMTYPE105),
+    CollectibleFragment = util.Localize(SI_SPECIALIZEDITEMTYPE109),
+    Key = util.Localize(SI_SPECIALIZEDITEMTYPE107),
+    MaterialUpgrader = util.Localize(SI_SPECIALIZEDITEMTYPE106),
+    RuneboxFragment = util.Localize(SI_SPECIALIZEDITEMTYPE108),
+    Toy = util.Localize(SI_SPECIALIZEDITEMTYPE111),
+    UpgradeFragment = util.Localize(SI_SPECIALIZEDITEMTYPE110),
+    Fish = util.Localize(SI_ITEMTYPE54),
+    RareFish = util.Localize(SI_SPECIALIZEDITEMTYPE80),
 
     --WEAPON
     OneHand = util.Localize(SI_GAMEPADWEAPONCATEGORY1),
